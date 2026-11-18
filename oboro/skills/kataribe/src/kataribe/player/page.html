@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+{{CSS}}
+</style>
+</head>
+<!-- 操作ボタンのアイコンは Lucide (https://lucide.dev, ISC License)。Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022. -->
+<body>
+<main id="kataribe-player">
+  <nav id="kataribe-chapter-bar" aria-label="章"></nav>
+  <div id="kataribe-chapter"></div>
+  <div id="kataribe-stage">
+{{SCENES}}
+    <div id="kataribe-characters" aria-hidden="true"></div>
+  </div>
+  <div id="kataribe-seek">
+    <span id="kataribe-seek-current" aria-hidden="true">0:00</span>
+    <input id="kataribe-seek-bar" type="range" min="0" max="1" step="any" value="0" aria-label="再生位置">
+    <span id="kataribe-seek-duration" aria-hidden="true">0:00</span>
+  </div>
+  <div id="kataribe-caption" aria-live="polite"></div>
+  <div id="kataribe-controls">
+    <button id="kataribe-prev" type="button">{{ICON:skip-back}}<span class="kataribe-label">前へ</span></button>
+    <button id="kataribe-play" type="button">{{ICON:play:kataribe-icon-play}}{{ICON:pause:kataribe-icon-pause}}<span class="kataribe-label">再生</span></button>
+    <button id="kataribe-next" type="button">{{ICON:skip-forward}}<span class="kataribe-label">次へ</span></button>
+    <button id="kataribe-captions-toggle" type="button" aria-pressed="true">{{ICON:captions}}<span class="kataribe-label">字幕</span></button>
+    <select id="kataribe-rate" aria-label="再生速度">
+      <option value="0.5">0.5倍</option>
+      <option value="0.75">0.75倍</option>
+      <option value="1" selected>1倍</option>
+      <option value="1.25">1.25倍</option>
+      <option value="1.5">1.5倍</option>
+      <option value="2">2倍</option>
+    </select>
+    <button id="kataribe-transcript-toggle" type="button" aria-expanded="false" aria-controls="kataribe-transcript">{{ICON:list}}<span class="kataribe-label">文字起こし</span></button>
+  </div>
+  <section id="kataribe-transcript" aria-label="文字起こし" hidden></section>
+{{ABOUT}}
+</main>
+<audio id="kataribe-audio" src="data:audio/mp4;base64,{{AUDIO}}"></audio>
+<script type="application/json" id="kataribe-timeline">{{TIMELINE}}</script>
+<script type="application/json" id="kataribe-cast">{{CAST}}</script>
+<script>
+{{CASTJS}}
+</script>
+<script>
+{{FIGURESJS}}
+</script>
+<script>
+{{JS}}
+</script>
+</body>
+</html>

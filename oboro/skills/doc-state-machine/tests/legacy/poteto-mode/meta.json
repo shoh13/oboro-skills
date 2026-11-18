@@ -1,0 +1,51 @@
+{
+  "title": "Potetoモード状態機械",
+  "slug": "poteto-state-machine",
+  "name": "poteto-mode",
+  "brand": "pstack",
+  "repoUrl": "https://github.com/cursor/plugins",
+  "file": "pstack/skills/poteto-mode/SKILL.md",
+  "fileLabel": "SKILL.md",
+  "anyLabel": "随時",
+  "areas": [
+    "起動条件",
+    "原則",
+    "自律実行",
+    "サブエージェント",
+    "返答",
+    "プレイブック",
+    "その他",
+    "対象ファイルの外"
+  ],
+  "legend": [
+    [
+      "skill",
+      "スキル"
+    ],
+    [
+      "prin",
+      "原則"
+    ],
+    [
+      "pb",
+      "プレイブック"
+    ],
+    [
+      "stop",
+      "停止"
+    ]
+  ],
+  "series": [
+    {
+      "k": [
+        "skill",
+        "prin"
+      ],
+      "start": 29
+    },
+    {
+      "k": "pb",
+      "start": 12
+    }
+  ]
+}

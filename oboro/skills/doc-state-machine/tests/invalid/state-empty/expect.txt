@@ -1,0 +1,1 @@
+state「空」: rules・errors・table が全て空

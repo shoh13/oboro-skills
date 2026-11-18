@@ -1,0 +1,14 @@
+{
+  "name": "oboro-skills",
+  "owner": {
+    "name": "shoh13"
+  },
+  "description": "shoh13 の自作エージェントスキル。",
+  "plugins": [
+    {
+      "name": "oboro",
+      "source": "./oboro",
+      "description": "自作のエージェントスキル。"
+    }
+  ]
+}

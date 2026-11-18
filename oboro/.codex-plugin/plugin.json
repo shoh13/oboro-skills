@@ -1,0 +1,11 @@
+{
+  "name": "oboro",
+  "version": "0.1.0",
+  "description": "自作のエージェントスキル。",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "oboro",
+    "category": "productivity",
+    "shortDescription": "自作のエージェントスキル。"
+  }
+}

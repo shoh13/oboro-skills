@@ -1,0 +1,1 @@
+transitions が "flow" なのに遷移先 ["state"

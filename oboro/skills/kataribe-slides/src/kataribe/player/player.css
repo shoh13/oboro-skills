@@ -1,0 +1,53 @@
+:root {
+  --bg: #fcfbf8;
+  --fg: #1c1c1c;
+  --muted: #666;
+  --line: #d9d6cc;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17181a; --fg: #ececec; --muted: #9a9a9a; --line: #3a3b3e; }
+}
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+#kataribe-player { max-width: 1280px; margin: 0 auto; padding: 16px; }
+#kataribe-chapter-bar { display: flex; gap: 4px; margin-bottom: 8px; }
+#kataribe-chapter-bar button { flex: 1 1 0; min-width: 0; font: inherit; font-size: 0.85rem; font-weight: 700; padding: 6px 8px; border: 2px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#kataribe-chapter-bar button[aria-current="true"] { color: var(--fg); border-color: var(--fg); }
+#kataribe-chapter { color: var(--muted); font-weight: 700; margin-bottom: 8px; min-height: 1.5em; }
+#kataribe-stage { position: relative; aspect-ratio: 16 / 9; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; padding: 24px; box-sizing: border-box; }
+#kataribe-stage section[data-scene]:not(.kataribe-active) { display: none; }
+#kataribe-caption { min-height: 3em; margin: 12px 0; font-size: 1.4rem; font-weight: 700; text-align: center; }
+#kataribe-seek { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+#kataribe-seek-bar { flex: 1 1 auto; min-width: 0; margin: 0; accent-color: var(--fg); cursor: pointer; }
+#kataribe-controls { display: flex; gap: 8px; justify-content: center; }
+#kataribe-controls button { font: inherit; padding: 8px 16px; border: 2px solid var(--line); border-radius: 8px; background: transparent; color: var(--fg); cursor: pointer; }
+#kataribe-controls select { font: inherit; padding: 8px; border: 2px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); cursor: pointer; }
+#kataribe-controls button[aria-pressed="false"] { color: var(--muted); }
+#kataribe-transcript { margin-top: 12px; max-height: 40vh; overflow-y: auto; border: 2px solid var(--line); border-radius: 12px; padding: 8px; }
+#kataribe-transcript[hidden] { display: none; }
+#kataribe-transcript button { display: block; width: 100%; text-align: left; font: inherit; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+#kataribe-transcript button[aria-current="true"] { color: var(--fg); font-weight: 700; background: var(--line); }
+#kataribe-about { margin-top: 24px; padding-top: 12px; border-top: 2px solid var(--line); font-size: 0.9rem; color: var(--muted); }
+#kataribe-about h2 { font-size: 0.9rem; margin: 12px 0 4px; color: var(--fg); }
+#kataribe-about p, #kataribe-about ul { margin: 0; }
+#kataribe-about ul { padding-left: 1.2em; }
+#kataribe-about a { color: inherit; }
+#kataribe-about [data-about="description"] p { white-space: pre-wrap; }
+#kataribe-stage [data-kataribe-state="hidden"] { visibility: hidden; }
+#kataribe-characters { position: absolute; inset: 0; pointer-events: none; }
+.kataribe-character { position: absolute; display: block; }
+#kataribe-stage [data-kataribe-focus-state="active"] { outline: 3px solid var(--fg); outline-offset: 3px; }
+#kataribe-stage [data-kataribe-focus-state="dim"] { opacity: 0.35; }
+#kataribe-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.kataribe-icon { display: none; width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 600px) {
+  #kataribe-player { padding: 12px; }
+  #kataribe-chapter-bar { overflow-x: auto; }
+  #kataribe-chapter-bar button { flex: 0 0 auto; text-overflow: clip; }
+  #kataribe-controls { flex-wrap: wrap; gap: 6px; }
+  #kataribe-controls button { min-width: 44px; min-height: 44px; padding: 0; }
+  #kataribe-controls select { min-height: 44px; }
+  #kataribe-controls .kataribe-icon { display: block; }
+  #kataribe-play[data-playing] .kataribe-icon-play, #kataribe-play:not([data-playing]) .kataribe-icon-pause { display: none; }
+  #kataribe-controls .kataribe-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #kataribe-caption { font-size: 1.1rem; }
+}

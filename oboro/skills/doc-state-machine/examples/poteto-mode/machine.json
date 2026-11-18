@@ -1,0 +1,203 @@
+{
+"flow": [
+  { "state": "/poteto-mode", "code": true, "rules": [
+    {"g":"プレイブックの実行","to":[["act","/poteto-mode を受けたチャット自身が実行"]],"src":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn","h":"2bd5dd4f22:a0 2f87c854fe:c13"},
+    {"g":"poteto-agent向けのプロンプト","to":[["act","poteto-mode/SKILL.md の絶対パスを記載"]],"src":"poteto-mode","h":"364a77eb35:a0"},
+    {"g":"原則を適用","to":[["act","個別のSKILL.md（principle-<title>）を通読"]],"src":"poteto-mode/principles","h":"24bd6eb895:a3"},
+    {"g":"原則を引用","to":[["act","このセッションで個別のSKILL.mdを読んだ原則に限定"]],"src":"poteto-mode/non-negotiables","h":"24bd6eb895:a1 e8d856f027:c1"},
+    {"g":"新しいタスクがプレイブックに該当／厳密さが必要","to":[["act","/poteto-mode を適用（常駐モードのリマインダー）"]],"h":"0dda29e839:a1 b93e811788:d0"}
+  ] },
+  { "state": "最初のメッセージ", "rules": [
+    {"g":"最初のメッセージ","to":[["act","ユーザーの目的と、それを満たす最小の変更を再掲"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0 2f87c854fe:c0"},
+    {"g":"最初のメッセージで目的と最小の変更を再掲した後","to":[["act","そのまま進行"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0"},
+    {"g":"依頼された変更を証拠が否定","to":[["act","証拠を提示"],["stop","停止"]],"h":"ab1f702ce8:a0 2f87c854fe:d0"}
+  ] },
+  { "state": "依頼を分類", "rules": [
+    {"g":"大規模・横断的・不在中の作業／該当するプレイブックなし","to":[["skill","figure-it-out"]],"src":"poteto-mode/playbooks","issue":"i9","h":"35f33923cd:a1 2f87c854fe:c24"},
+    {"g":"複数日・多数のPRスタック・サブエージェント群を1コーディネーターが統括","to":[["pb","Orchestrate","統括"]],"src":"poteto-mode/playbooks","h":"99559f2f52:a3 2f87c854fe:d23"},
+    {"g":"1エージェントがセッション予算内で完了可能（大規模に聞こえる場合を含む）","to":[["pb","Autonomous run","自律実行"]],"inferred":"原文はこの規定を「Orchestrate」の項目に Orchestrate との区別として記載し、プログラム規模の表現を含まない依頼への適用を明記していない","h":"99559f2f52:a6 2f87c854fe:d23"},
+    {"g":"タスクが Investigation に該当","to":[["pb","Investigation","調査"]],"src":"poteto-mode/playbooks","issue":"i9","h":"24bd6eb895:a8 2f87c854fe:c22","gap":true},
+    {"g":"タスクが Runtime forensics に該当","to":[["pb","Runtime forensics","実行時の原因調査"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"タスクが Trace forensics に該当","to":[["pb","Trace forensics","トレースの原因調査"]],"src":"poteto-mode/playbooks","h":"bbc0d75eb2:a0 2f87c854fe:c22"},
+    {"g":"タスクが Bug fix に該当","to":[["pb","Bug fix","バグ修正"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22","gap":true},
+    {"g":"タスクが Perf issue に該当","to":[["pb","Perf issue","性能の問題"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"タスクが Hillclimb に該当","to":[["pb","Hillclimb","山登り法"]],"src":"poteto-mode/playbooks","h":"b64f02a456:a0 2f87c854fe:c22"},
+    {"g":"タスクが Feature に該当","to":[["pb","Feature","機能"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"タスクが Refactoring に該当","to":[["pb","Refactoring","リファクタリング"]],"src":"poteto-mode/playbooks","h":"f18ffc1bd6:a0 2f87c854fe:c22"},
+    {"g":"タスクが Prototype に該当","to":[["pb","Prototype","試作"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 318e8f74cc:c1 2f87c854fe:c22"},
+    {"g":"タスクが Visual parity に該当","to":[["pb","Visual parity","見た目の一致"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"タスクが Authoring a skill に該当","to":[["pb","Authoring a skill","スキルの作成"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"タスクが Eval に該当","to":[["pb","Eval","評価"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"タスクが Autonomous run に該当","to":[["pb","Autonomous run","自律実行"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22","gap":true},
+    {"g":"タスクが Autopilot-full に該当","to":[["pb","Autopilot-full","完全な自動操縦"]],"src":"poteto-mode/playbooks","h":"b047069f4f:a2 70b2dc8b4b:c3 2f87c854fe:c22"},
+    {"g":"タスクが Autopilot-stack に該当","to":[["pb","Autopilot-stack","スタックの自動操縦"]],"src":"poteto-mode/playbooks","h":"b047069f4f:a3 23a56e2dac:c3 ab1f702ce8:c4 2f87c854fe:c22"},
+    {"g":"タスクが Multi-phase plan に該当","to":[["pb","Multi-phase plan","複数フェーズの計画"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"タスクが Session pickup に該当","to":[["pb","Session pickup","セッションの引き継ぎ"]],"src":"poteto-mode/playbooks","h":"bbc0d75eb2:a1 2f87c854fe:c22","gap":true},
+    {"g":"タスクが Pause safely に該当","to":[["pb","Pause safely","安全な一時停止"]],"src":"poteto-mode/playbooks","h":"2f3a47e6c4:a0 2f87c854fe:c22"},
+    {"g":"タスクが Worktree cleanup に該当","to":[["pb","Worktree cleanup","worktreeの整理"]],"src":"poteto-mode/playbooks","h":"99559f2f52:a7 2f87c854fe:c22"}
+  ] },
+  { "state": "ToDoを作成", "rules": [
+    {"g":"タスクに該当するプレイブックを選択","to":[["act","playbooks/<title>.md（title は kebab case）の手順を開く"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8","issue":"i9"},
+    {"g":"タスクに該当するプレイブックを選択","to":[["act","手順を最初に todolist ツールへ複写"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 e8d856f027:c5 2f87c854fe:c24"},
+    {"g":"プレイブックの手順を実施しない","to":[["act","skip: <reason> を添えて ToDo に残す"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:d25"},
+    {"g":"複数段階のタスクを開始","to":[["act","「Principles 節を全文読む」を ToDo の先頭に配置"]],"h":"24bd6eb895:a1 e8d856f027:d0"}
+  ] },
+  { "state": "設計", "rules": [
+    {"g":"単純ではない変更／アーキテクチャの判断／「本当に大丈夫か」","to":[["skill","how"]],"h":"24bd6eb895:a2 bf0c7cd80a:d0"},
+    {"g":"関数の境界をまたぐコード","to":[["skill","architect"]],"src":"poteto-mode/non-negotiables/code","h":"24bd6eb895:a2 2f87c854fe:c3"},
+    {"g":"ロジックを書く前","to":[["prin","土台から考える","principle-foundational-thinking"]],"src":"poteto-mode/principles/foundational-thinking","h":"24bd6eb895:a3"},
+    {"g":"前例のない操作・アーキテクチャ判断","to":[["prin","設計の選択肢を検討し尽くす","principle-exhaust-the-design-space"],["act","試作を2〜3案"]],"src":"poteto-mode/principles/exhaust-the-design-space","h":"24bd6eb895:a3"},
+    {"g":"既存設計に新要件を統合","to":[["prin","第一原理から再設計する","principle-redesign-from-first-principles"]],"src":"poteto-mode/principles/redesign-from-first-principles","h":"24bd6eb895:a3"},
+    {"g":"製品・UX・機能範囲のトレードオフ","to":[["prin","体験を優先する","principle-experience-first"]],"src":"poteto-mode/principles/experience-first","h":"24bd6eb895:a3"},
+    {"g":"単純ではない複数段階の作業","to":[["act","スループットの確認項目を記述（Feature ステップ3）"]],"h":"24bd6eb895:a2 2f87c854fe:d4"},
+    {"g":"設計に異論がある","to":[["skill","interrogate"]],"src":"poteto-mode/non-negotiables/code","h":"24bd6eb895:a2 3fe2823ce1:c1 2f87c854fe:c3"}
+  ] },
+  { "state": "実装", "rules": [
+    {"g":"コードを書く","to":[["act","最初にデータの形を明示"]],"src":"poteto-mode/non-negotiables/code","h":"24bd6eb895:a2 a8145426e5:c0 3fe2823ce1:c0 2f87c854fe:c3"},
+    {"g":"状態を持つロジック・分岐の多いコード・形の前提を複数ファイルで反復するコード","to":[["prin","ドメインをモデル化する","principle-model-the-domain"]],"src":"poteto-mode/principles/model-the-domain","h":"a8145426e5:a0"},
+    {"g":"差分の規模を決定／抽象化・層を追加したくなる","to":[["prin","怠惰の原則","principle-laziness-protocol"]],"src":"poteto-mode/principles/laziness-protocol","h":"24bd6eb895:a3"},
+    {"g":"追加・リファクタリング・書き換えの順序を決定","to":[["prin","追加の前に削る","principle-subtract-before-you-add"]],"src":"poteto-mode/principles/subtract-before-you-add","h":"24bd6eb895:a3"},
+    {"g":"単純ではない作業","to":[["prin","作業を支える道具を作る","principle-build-the-lever"]],"src":"poteto-mode/principles/build-the-lever","h":"7b1c32e4c3:a0 ba7781cce6:c0"},
+    {"g":"計画された、フェーズ境界が明確な書き換え・移行","to":[["prin","到達点を基準に実行する","principle-outcome-oriented-execution"]],"src":"poteto-mode/principles/outcome-oriented-execution","h":"24bd6eb895:a3"},
+    {"g":"追跡しづらいコードのレビュー・構成変更","to":[["prin","読み手の負荷を減らす","principle-minimize-reader-load"]],"src":"poteto-mode/principles/minimize-reader-load","h":"24bd6eb895:a3"},
+    {"g":"検証・エラー処理・フレームワークのアダプターを接続","to":[["prin","境界を守る","principle-boundary-discipline"]],"src":"poteto-mode/principles/boundary-discipline","h":"24bd6eb895:a3","gap":true},
+    {"g":"型のある言語で型・シグネチャを設計","to":[["prin","型システムを活用する","principle-type-system-discipline"]],"src":"poteto-mode/principles/type-system-discipline","h":"24bd6eb895:a3"},
+    {"g":"クラッシュ・再試行が起こるコマンド・ループ","to":[["prin","操作を冪等にする","principle-make-operations-idempotent"]],"src":"poteto-mode/principles/make-operations-idempotent","h":"24bd6eb895:a3"},
+    {"g":"旧呼び出し元が残る状態で新しい内部APIを導入","to":[["prin","呼び出し元を移行して旧APIを削除する","principle-migrate-callers-then-delete-legacy-apis"]],"src":"poteto-mode/principles/migrate-callers-then-delete-legacy-apis","h":"24bd6eb895:a3"},
+    {"g":"並行する複数の主体が同じファイル・ブランチ・キー・オブジェクトへ書き込む可能性がある","to":[["prin","共有状態を直列化する前に分離する","principle-separate-before-serializing-shared-state"]],"src":"poteto-mode/principles/separate-before-serializing-shared-state","h":"24bd6eb895:a3"},
+    {"g":"UI・IDE・CLI を出荷","to":[["skill","control-ui または control-cli","cursor-team-kit"]],"src":"poteto-mode/non-negotiables/shipping-ui-ide-cli","issue":"i8","h":"24bd6eb895:a2 2f87c854fe:c6","gap":true},
+    {"g":"ブラウザ・Electron・Web UIを提供","to":[["skill","control-ui"]],"src":"poteto-mode/non-negotiables/shipping-ui-ide-cli","h":"24bd6eb895:a2 2f87c854fe:d6"},
+    {"g":"コメントを書く","to":[["act","コードで示せない自明でない理由に限定"]],"h":"24bd6eb895:a7 2f87c854fe:d21"}
+  ] },
+  { "state": "検証", "rules": [
+    {"g":"UI・IDE・CLI の出荷でのバグ修正","to":[["act","まず自分で同じ操作面から再現"]],"src":"poteto-mode/non-negotiables/shipping-ui-ide-cli","h":"24bd6eb895:a9 2f87c854fe:d6"},
+    {"g":"デバッグ","to":[["prin","根本原因を直す","principle-fix-root-causes"]],"src":"poteto-mode/principles/fix-root-causes","h":"24bd6eb895:a3 e5136d8241:c1"},
+    {"g":"同じ前提の修正が2回以上、同じ確認に失敗","to":[["prin","前提を疑う","principle-attack-the-premise"]],"src":"poteto-mode/principles/attack-the-premise","h":"e8d856f027:a2 e5136d8241:c0"},
+    {"g":"テストを追加・変更・維持","to":[["prin","実装ではなく振る舞いをテストする","principle-test-behavior-not-implementation"]],"src":"poteto-mode/principles/test-behavior-not-implementation","h":"e8d856f027:a3 e5136d8241:c2"},
+    {"g":"複数段階の作業・移行・コミットやPRの積み重ね","to":[["prin","検証可能な単位を順に進める","principle-sequence-verifiable-units"]],"src":"poteto-mode/principles/sequence-work-into-verifiable-units","h":"27daaa3091:a0"},
+    {"g":"自分で測定した数値","to":[["skill","benchmark-checklist"]],"src":"poteto-mode/non-negotiables/a-number-you-measured","h":"23e4138daa:a1 2f87c854fe:c7"},
+    {"g":"測定の前／測定値を信頼・報告・利用する前","to":[["prin","数値を説明する","principle-explain-the-number"]],"src":"poteto-mode/principles/explain-the-number","h":"23e4138daa:a2 ab1f702ce8:c1"},
+    {"g":"完了を宣言する前","to":[["prin","動くことを証明する","principle-prove-it-works"]],"src":"poteto-mode/principles/prove-it-works","h":"24bd6eb895:a3"}
+  ] },
+  { "state": "コミット前", "rules": [
+    {"g":"コミットの前","to":[["skill","/deslop","cursor-team-kit"]],"src":"poteto-mode/non-negotiables/before-commit","h":"24bd6eb895:a2"},
+    {"g":"コミットメッセージを書く","to":[["skill","technical-writing"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"b047069f4f:a0"}
+  ] },
+  { "state": "レビュー前", "rules": [
+    {"g":"レビューに出す前","to":[["skill","no-comments"]],"src":"poteto-mode/non-negotiables/before-commit","h":"b047069f4f:a1"}
+  ] },
+  { "state": "PRを作成", "rules": [
+    {"g":"タスクが Opening a PR に該当","to":[["pb","Opening a PR","PRの作成"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},
+    {"g":"PR説明を書く","to":[["skill","technical-writing"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"b047069f4f:a0"},
+    {"g":"PRの ## Why を書く","to":[["act","ユーザーの目的から開始"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0"}
+  ] },
+  { "state": "PRを仕上げる", "rules": [
+    {"g":"PRの状況","to":[["pb","Babysit","見守り"]],"src":"poteto-mode/non-negotiables/pr-status poteto-mode/playbooks","h":"99559f2f52:a0 2f87c854fe:c8"},
+    {"g":"PRを開いただけ","to":[["act","Babysit を起動しない"]],"h":"99559f2f52:a0 2f87c854fe:d8"},
+    {"g":"PRを開いた後","to":[["skill","babysit","Cursor 組み込みのスキル"]],"h":"24bd6eb895:a2 99559f2f52:d0"},
+    {"g":"Babysit のポーリングの前","to":[["act","Babysit のモードを宣言"]],"h":"99559f2f52:a0 2f87c854fe:d8"},
+    {"g":"Cursor 組み込みの babysit スキル","to":[["stop","使用しない"]],"src":"poteto-mode/non-negotiables/pr-status","h":"99559f2f52:a0"},
+    {"g":"フェーズ担当エージェントの内部","to":[["stop","drive を使用しない"]],"inferred":"原文は、フェーズ担当エージェントの内部で drive を使用するとそのエージェントのターンの完了が不可能になると記載し、使用の禁止を明記していない","h":"99559f2f52:a0 2f87c854fe:d8"},
+    {"g":"ボットのレビューコメント","to":[["act","各コメントを内容で判断"]],"src":"poteto-mode/non-negotiables/bot-review-comments","h":"97d645a601:a0 99559f2f52:c2 2f87c854fe:c9"}
+  ] },
+  { "state": "マージ", "rules": [
+    {"g":"CI 成功済み（green）のスタックのマージ","to":[["pb","Shipping","出荷"]],"src":"poteto-mode/non-negotiables/pr-status poteto-mode/playbooks","h":"99559f2f52:a1 23a56e2dac:c2 2f87c854fe:c8"},
+    {"g":"各 PR への独立した判定の前","to":[["stop","何も arm しない"]],"h":"99559f2f52:a1 2f87c854fe:d8"},
+    {"g":"スタックの根元から連続して検証済みの範囲","to":[["act","その範囲だけを順にマージ"]],"h":"99559f2f52:a1 2f87c854fe:d8"}
+  ] },
+  { "state": "返答", "rules": [
+    {"g":"プレイブックを終了","to":[["skill","unslop"],["act","「返答の書き方」の形式"]],"src":"poteto-mode/writing-the-reply","h":"24bd6eb895:a6 2f87c854fe:d20"},
+    {"g":"返答を書く","to":[["act","短い平叙文。長いダッシュと接続のコロンを使用しない"]],"src":"poteto-mode/writing-the-reply","issue":"i11","h":"24bd6eb895:a6"},
+    {"g":"返答を書く","to":[["act","ユーザーにとって変化する点から記載"]],"src":"poteto-mode/writing-the-reply","h":"c532aa167c:a0 2f87c854fe:c20"},
+    {"g":"主張を記載","to":[["act","根拠または確度（実測・推論・推測）を付記"]],"src":"poteto-mode/writing-the-reply","h":"f8abeddd18:a0 2f87c854fe:c20"},
+    {"g":"自分で実行できる確認","to":[["stop","人間に依頼しない"]],"src":"poteto-mode/writing-the-reply","h":"f8abeddd18:a0"},
+    {"g":"リンク・引用を記載","to":[["act","このセッションで作成・読了した成果物に限定"]],"h":"24bd6eb895:a6 2f87c854fe:d20"},
+    {"g":"判断に原則を使用","to":[["act","原則と、それによって変更した選択を提示"]],"src":"poteto-mode/non-negotiables","h":"24bd6eb895:a1"},
+    {"g":"最終報告を書く","to":[["act","ユーザーの目的から開始"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0 2f87c854fe:c0"},
+    {"g":"完全に指定された1行の編集の後","to":[["act","目的の再掲を省略"]],"h":"ab1f702ce8:a0 2f87c854fe:d0"}
+  ] }
+],
+"any": [
+  { "state": "分岐で質問したくなった", "rules": [
+    {"g":"AskQuestion の前","to":[["act","問いの種類を分類"]],"h":"318e8f74cc:a0 2f87c854fe:d2"},
+    {"g":"実行して決着できる分岐","to":[["pb","Prototype","質問せずに試作"]],"src":"poteto-mode/non-negotiables/a-fork-you-could-settle-by-running-something","h":"318e8f74cc:a0 2f87c854fe:c2"},
+    {"g":"出典付きの回答が成果物の読み取り専用 Investigation","to":[["act","試作せず証拠に基づいて回答"]],"h":"318e8f74cc:a0 2f87c854fe:d2"},
+    {"g":"実験で決着できない製品判断・好み","to":[["skill","AskQuestion"]],"h":"318e8f74cc:a0 2f87c854fe:d2"},
+    {"g":"可逆な作業で「Xをすべきか」","to":[["prin","人間待ちで止まらない","principle-never-block-on-the-human"]],"src":"poteto-mode/principles/never-block-on-the-human","h":"24bd6eb895:a3"},
+    {"g":"完全な自律実行の許可範囲内の判断","to":[["act","自分で決定・実行・結果を報告"]],"h":"70b2dc8b4b:a0 2f87c854fe:d2","gap":true},
+    {"g":"完全な自律実行の許可の下で、運用者しか決定できない事項","to":[["act","既定値を適用し、理由と変更の指示方法を報告"]],"h":"70b2dc8b4b:a0 23e4138daa:c0 2f87c854fe:d2"},
+    {"g":"完全な自律実行の許可の下で、運用者が明示した承認条件","to":[["stop","運用者の確認が必要"]],"h":"70b2dc8b4b:a0 2f87c854fe:d2"}
+  ] },
+  { "state": "操作の直前", "rules": [
+    {"g":"可逆な作業・外部への操作（チームチャット・チケット更新・評価の起動）","to":[["act","確認を求めず実行"]],"src":"poteto-mode/autonomy/just-do-it","issue":"i13","h":"24bd6eb895:a4"},
+    {"g":"共有ブランチへの force-push／デプロイ／データ削除／顧客へのメッセージ","to":[["stop","必ず停止"]],"src":"poteto-mode/autonomy/always-pause","issue":"i4","h":"24bd6eb895:a4"},
+    {"g":"「止まらないで」「寝る」「終わるまで実行して」「完全に自律で」","to":[["act","作業を継続"]],"src":"poteto-mode/autonomy/session-overrides","issue":"i4","h":"24bd6eb895:a4"},
+    {"g":"「すべきか」と質問された／範囲の追加を提案された／方法を示された","to":[["act","自分の判断を回答。拒否・異論を含む"]],"src":"poteto-mode/autonomy/no-is-an-acceptable-answer","h":"24bd6eb895:a4"}
+  ] },
+  { "state": "作業を委任", "rules": [
+    {"g":"プレイブックのステップ内で直接起動","to":[["act","subagent_type: poteto-agent"]],"src":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn","issue":"i7","h":"24bd6eb895:a5"},
+    {"g":"interrogate・swarm の内部","to":[["act","各スキルが指定する subagent_type"]],"src":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn","issue":"i7","h":"24bd6eb895:a5 91dd7b7119:c0 bf0c7cd80a:c1 2f87c854fe:c13"},
+    {"g":"Task を呼び出す","to":[["act","run_in_background: true・エージェントモード・ファイル参照・役割ごとのモデル明示（Project worker を含む）"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"24bd6eb895:a5 ab1f702ce8:c2 2f87c854fe:c15","issue":"i13"},
+    {"g":"サブエージェントへの指示を書く","to":[["act","ユーザーの目的から開始"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0 2f87c854fe:c0"},
+    {"g":"Task サブエージェント・Project worker を起動","to":[["act","キックオフの1行目を Read <path>/worker.md before anything else.（<path> はこのスキルのフォルダの絶対パス）"]],"src":"poteto-mode/non-negotiables/starting-any-agent-whether-a-task-subagent-or","h":"2f87c854fe:a1"},
+    {"g":"起動するエージェントのキックオフの1行目以外","to":[["act","目的とタスクに限定（poteto-agent にはこのファイルの絶対パスを追加）"]],"src":"poteto-mode/non-negotiables/starting-any-agent-whether-a-task-subagent-or","h":"2f87c854fe:a1"},
+    {"g":"並列展開（fan-out）","to":[["skill","swarm"]],"src":"poteto-mode/non-negotiables/code","h":"b79f8ca89e:a0 2f87c854fe:c3","gap":true},
+    {"g":"比較（bakeoff）","to":[["skill","arena"]],"src":"poteto-mode/non-negotiables/code","issue":"i7","h":"b79f8ca89e:a0 2f87c854fe:c3"},
+    {"g":"大量出力・長いファイル・繰り返しの読み込み","to":[["prin","コンテキストを守る","principle-guard-the-context-window"]],"src":"poteto-mode/principles/guard-the-context-window","h":"24bd6eb895:a3"},
+    {"g":"修正・追加対応・再試行・次のキュー項目","to":[["act","元の指示・後の全指示・前任の報告とブランチを含めて新しいサブエージェントへ委任"]],"src":"poteto-mode/subagents/fresh-subagents-by-default","h":"24bd6eb895:a5 23e4138daa:c3","gap":true},
+    {"g":"移動が高コストな既存エージェントの状態（チェックアウト・未コミット変更・実行中のプロセス）が必要","to":[["act","既存エージェントを再開"]],"src":"poteto-mode/subagents/fresh-subagents-by-default","h":"23e4138daa:a3"},
+    {"g":"セカンドオピニオンを求める","to":[["act","別ベンダーのモデルに同じプロンプト"]],"src":"poteto-mode/subagents","h":"24bd6eb895:a5 2f87c854fe:c19"},
+    {"g":"サブエージェントの報告が返った","to":[["act","差分を確認し、自分で要約"]],"src":"poteto-mode/subagents","h":"24bd6eb895:a5"}
+  ] },
+  { "state": "モデルを選択", "rules": [
+    {"g":"コード・文章・判断","to":[["m","claude-opus-5-5-xhigh-fast"]],"src":"poteto-mode/subagents","issue":"i12","h":"24bd6eb895:a5 ec44aed93c:c0 6605d7adc3:c0 dc2fae6625:c0 e1007b141f:c0 63d938c2e4:c0 23a56e2dac:c0 70b2dc8b4b:c1 df581122cd:c0 bf0c7cd80a:c2 2f87c854fe:c14"},
+    {"g":"コードのプレイブック","to":[["act","そのプレイブックの行（feature, refactoring・bug-fix・perf-issue・hillclimb）を参照"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"12d587dfb2:a0"},
+    {"g":"文章・判断","to":[["act","judgment and prose の行を参照"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"12d587dfb2:a0"},
+    {"g":"横断的な設計・難しい並行処理・繊細なアルゴリズム","to":[["act","hardest tasks"],["m","claude-fable-5-2-max"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"9b80b53498:a0 3fe2823ce1:c2 23a56e2dac:c0 e8d856f027:c4 70b2dc8b4b:c2 df581122cd:c0 bf0c7cd80a:c2 2f87c854fe:d14"},
+    {"g":"単純な機械的変更","to":[["act","swarm workers の行"],["m","claude-opus-5-5-high-fast"]],"src":"poteto-mode/subagents poteto-mode/subagents/defaults-for-every-task-call","issue":"i12","h":"3fe2823ce1:a2 bf0c7cd80a:c2"},
+    {"g":"検証","to":[["act","常に swarm workers のモデル"],["m","claude-opus-5-5-high-fast"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","issue":"i12","h":"ce649c03ac:a1 bf0c7cd80a:c2"},
+    {"g":"レビュー・設計のパネル（各1席）","to":[["m","claude-fable-5-2-high、claude-opus-5-5-high-fast、gemini-4-carbon-high"]],"src":"poteto-mode/subagents","issue":"i12","h":"bf0c7cd80a:a2"},
+    {"g":"パネル以外で、ユーザーがこのタスクに Fable 5.2 を指定","to":[["m","Fable 5.2"],["act","該当した条件を明示"]],"src":"poteto-mode/subagents/fable-52-is-an-exception","h":"2f87c854fe:a16","gap":true},
+    {"g":"パネル以外で、同じ指示での Opus 5.5 xhigh の2回の実行が確認に失敗","to":[["m","Fable 5.2"],["act","該当した条件を明示"]],"src":"poteto-mode/subagents/fable-52-is-an-exception","h":"2f87c854fe:a16"},
+    {"g":"パネル以外で Fable 5.2 を使用する理由が難しさだけ","to":[["stop","Fable 5.2 の条件に該当しない"]],"src":"poteto-mode/subagents/fable-52-is-an-exception","h":"2f87c854fe:a16"},
+    {"g":"ルールに # defaults: 3 の行がない","to":[["act","既存の行を維持し、/setup-pstack の再実行をセッションに1回案内"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"bf0c7cd80a:a3 2f87c854fe:c15","gap":true},
+    {"g":"役割の行が inherit-parent または auto","to":[["act","model を省略し generalPurpose を起動（親モデルで実行）"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"63432f3196:a1 2f87c854fe:c15"},
+    {"g":"役割のモデルを Task に渡す","to":[["act","実在する識別子を model に指定"]],"h":"63432f3196:a0 04166ac891:d0"},
+    {"g":"各役割の開始レベル","to":[["act","/setup-pstack の予算で設定"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 bf0c7cd80a:c4 2f87c854fe:c17","gap":true},
+    {"g":"パネルの席","to":[["act","記載のレベルを維持"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"2f87c854fe:a17"},
+    {"g":"パネル以外の役割で最難関・繊細な仕事","to":[["act","推論レベルを1段階上げる（上限 xhigh）"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:c17"},
+    {"g":"パネル以外の役割で判断の仕事","to":[["act","推論レベルを1段階下げる"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","issue":"i12","h":"ce649c03ac:a1 2f87c854fe:c17"},
+    {"g":"パネル以外の役割で定型作業","to":[["act","推論レベルを2段階以上下げる"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:c17"},
+    {"g":"常に","to":[["act","どの役割も推論レベルの上限は xhigh"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"2f87c854fe:a17"},
+    {"g":"CI・trunkの破損／誰かが結果待ちで停止","to":[["act","fastモード"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:d17"},
+    {"g":"推論レベルを設定","to":[["act","役割の行・既定値のモデル系列を維持"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 bf0c7cd80a:c4 2f87c854fe:c17"},
+    {"g":"Opus 5.5 を使用","to":[["act","常に -fast の識別子"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"2f87c854fe:a17"},
+    {"g":"Gemini の席","to":[["act","上限は gemini-4-carbon-high"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"bf0c7cd80a:a4 2f87c854fe:c17"},
+    {"g":"緊急の Fable 5.2","to":[["act","標準速度でレベルを維持"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"bf0c7cd80a:a4 2f87c854fe:d17"},
+    {"g":"厳密に指定された手順を文字どおり実行する最難関の作業","to":[["act","最強の指示追従モデル"]],"h":"3fe2823ce1:a2 e1007b141f:c1 23a56e2dac:c1 e8d856f027:d4"}
+  ] },
+  { "state": "識別子が拒否された", "rules": [
+    {"g":"拒否された識別子","to":[["stop","再び指定しない"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3"},
+    {"g":"役割の行・既定値を使用できる","to":[["act","役割の行または既定値を使用"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:c18","inferred":"原文は最初の代替を役割の行または既定値と記載し、その識別子自体が拒否済みの場合を区別していない。拒否された識別子を再び指定しない規定と合わせて、使用できる場合に限ると補完した"},
+    {"g":"役割の行・既定値を使用できず、呼び出し元スキルに代替がある","to":[["act","呼び出し元スキルの代替"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3","inferred":"原文は代替の順序だけを記載し、次の代替へ移行する条件を記載していない。前の代替を使用できない（拒否済み、または存在しない）場合に次の代替へ移行すると補完した"},
+    {"g":"役割の行・既定値と呼び出し元スキルの代替を使用できない","to":[["act","同系列で最も近い有効な識別子"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3 2f87c854fe:c18","inferred":"原文は代替の順序だけを記載し、次の代替へ移行する条件を記載していない。前の代替を使用できない（拒否済み、または存在しない）場合に次の代替へ移行すると補完した"},
+    {"g":"役割の行・既定値、呼び出し元スキルの代替、同系列の有効な識別子をいずれも使用できない","to":[["act","model を省略"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3 2f87c854fe:c18","inferred":"原文は代替の順序だけを記載し、次の代替へ移行する条件を記載していない。前の代替を使用できない（拒否済み、または存在しない）場合に次の代替へ移行すると補完した"},
+    {"g":"代替の識別子へ変更・model を省略","to":[["act","その旨を報告"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1"}
+  ] },
+  { "state": "文章を書く", "rules": [
+    {"g":"文章を書く（ユーザーへの返答を含む）","to":[["skill","unslop"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"24bd6eb895:a2"},
+    {"g":"エージェント向けの文章","to":[["skill","unslop"],["skill","create-skill"]],"h":"24bd6eb895:a2 2f87c854fe:d5"},
+    {"g":"ドキュメント・PR説明・コミットメッセージ","to":[["skill","technical-writing"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"b047069f4f:a0 2f87c854fe:c5"},
+    {"g":"同じ指示を二度書いている","to":[["prin","教訓を構造に組み込む","principle-encode-lessons-in-structure"],["act","lint・フラグ・スクリプト"]],"src":"poteto-mode/principles/encode-lessons-in-structure","h":"24bd6eb895:a3"}
+  ] },
+  { "state": "長時間・不在の作業", "rules": [
+    {"g":"長時間・不在中の作業","to":[["skill","show-me-your-work"]],"src":"poteto-mode/non-negotiables/long-or-unattended-work","h":"35f33923cd:a0 2f87c854fe:c11"},
+    {"g":"監査可能な記録が必要な重要度","to":[["act","判断の記録をコミット"]],"h":"35f33923cd:a0 2f87c854fe:d11"},
+    {"g":"監査可能な記録が必要な重要度ではない","to":[["act","判断の記録をローカルに保存"]],"h":"35f33923cd:a0 2f87c854fe:d11"}
+  ] },
+  { "state": "壊れたスキルを発見", "rules": [
+    {"g":"作業中に壊れたスキルを発見","to":[["act","別PRで修正"],["act","本来の作業を継続"]],"h":"24bd6eb895:a2 2f87c854fe:d10"},
+    {"g":"壊れたスキルを黙って回避","to":[["stop","禁止"]],"h":"24bd6eb895:a2 2f87c854fe:d10"}
+  ] }
+]
+}

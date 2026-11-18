@@ -1,0 +1,185 @@
+{
+"flow": [
+  { "state": "/poteto-mode", "code": true, "rules": [
+    {"g":"プレイブックの本体","to":[["act","このチャット自身が実行。poteto-agentに実行させない"]],"h":"2bd5dd4f22:a0"},
+    {"g":"poteto-agent向けのプロンプト","to":[["act","poteto-mode/SKILL.md の絶対パスを記載"]],"h":"364a77eb35:a0"},
+    {"g":"原則を引用","to":[["act","このセッションで個別のSKILL.mdを読んだ原則に限定"]],"h":"24bd6eb895:a1 e8d856f027:c1"},
+    {"g":"新しいタスクがプレイブックに該当／厳密さが必要","to":[["act","/poteto-mode を適用（常駐モードのリマインダー）"]],"h":"0dda29e839:a1 b93e811788:d0"}
+  ] },
+  { "state": "最初のメッセージ", "rules": [
+    {"g":"タスクの最初のメッセージ","to":[["act","ユーザーの目的・解決する問題・目的を満たす最小の変更を自分の言葉で伝達"]],"h":"ab1f702ce8:a0"},
+    {"g":"伝達した後","to":[["act","確認を待たずに進行"]],"h":"ab1f702ce8:a0"},
+    {"g":"依頼された変更を証拠が否定","to":[["act","証拠を提示"],["stop","停止"]],"h":"ab1f702ce8:a0"}
+  ] },
+  { "state": "依頼を分類", "rules": [
+    {"g":"多数の呼び出し箇所の移行／複数要素にまたがる大きな変更／席を外して後で確認／該当するプレイブックなし","to":[["skill","figure-it-out"]],"h":"35f33923cd:a1"},
+    {"g":"複数日・多数のPRスタック・サブエージェント群を1コーディネーターが統括","to":[["pb","Orchestrate","継続的な統括"]],"h":"99559f2f52:a3"},
+    {"g":"1エージェントがセッション予算内で完了可能（大規模に聞こえる場合を含む）","to":[["pb","Autonomous run","自律実行"]],"h":"99559f2f52:a6"},
+    {"g":"仕組み・理由・確信・選択に関する読み取り専用の問い","to":[["pb","Investigation","調査"]],"h":"24bd6eb895:a8","gap":true},
+    {"g":"リーク・アイドル時のCPUスピン・表示の乱れをライブ計測から診断","to":[["pb","Runtime forensics","実行時の原因調査"]],"h":"24bd6eb895:a8"},
+    {"g":"渡された cpuprofile・trace・spindump・heap snapshot を診断","to":[["pb","Trace forensics","トレースの原因調査"]],"h":"bbc0d75eb2:a0"},
+    {"g":"報告された不具合","to":[["pb","Bug fix","バグ修正"]],"h":"24bd6eb895:a8","gap":true},
+    {"g":"実測された遅さを1回で修正","to":[["pb","Perf issue","性能改善"]],"h":"24bd6eb895:a8"},
+    {"g":"1つの指標を目標まで継続的に改善","to":[["pb","Hillclimb","継続的な指標改善"]],"h":"b64f02a456:a0"},
+    {"g":"新しい振る舞い・振る舞いの変更","to":[["pb","Feature","機能開発"]],"h":"24bd6eb895:a8"},
+    {"g":"振る舞いを保持して構造・データの形を変更","to":[["pb","Refactoring","リファクタリング"]],"h":"f18ffc1bd6:a0"},
+    {"g":"「試作して」「モックを作って」「作って決めよう」","to":[["pb","Prototype","試作"]],"h":"24bd6eb895:a8 318e8f74cc:c1"},
+    {"g":"2つの実装・移行前後のUIをピクセル単位で一致","to":[["pb","Visual parity","見た目の一致"]],"h":"24bd6eb895:a8"},
+    {"g":"SKILL.md の作成・編集","to":[["pb","Authoring a skill","スキルの作成・変更"]],"h":"24bd6eb895:a8"},
+    {"g":"スキル・構造・プロンプトの変更の影響を採用前に検証","to":[["pb","Eval","評価"]],"h":"24bd6eb895:a8"},
+    {"g":"「完了まで実行」「Xまで /loop」","to":[["pb","Autonomous run","自律実行"]],"h":"24bd6eb895:a8","gap":true},
+    {"g":"「このキューをautopilotで」「full autopilot」","to":[["pb","Autopilot-full","独立PRの全自動処理"]],"h":"b047069f4f:a2 70b2dc8b4b:c3"},
+    {"g":"「autopilot-stack」「autopilotで、マージはしないで」「積み上げて、マージはしないで」","to":[["pb","Autopilot-stack","スタックの全自動構築"]],"h":"b047069f4f:a3 23a56e2dac:c3 ab1f702ce8:c4"},
+    {"g":"フェーズ・PRスタックをまたぐ仕事","to":[["pb","Multi-phase plan","複数フェーズ・複数PRの計画"]],"h":"24bd6eb895:a8"},
+    {"g":"会話記録・クラウドエージェントURL・push済みブランチから前任の作業を再開","to":[["pb","Session pickup","セッションの引き継ぎ"]],"h":"bbc0d75eb2:a1","gap":true},
+    {"g":"明示的な停止・オフライン化・再起動・コンテキスト圧縮の直前","to":[["pb","Pause safely","安全な一時停止"]],"h":"2f3a47e6c4:a0"},
+    {"g":"「worktreeを整理して」「空き容量を増やして」「古いシミュレーターを削除して」","to":[["pb","Worktree cleanup","worktreeとシミュレーターの整理"]],"h":"99559f2f52:a7"}
+  ] },
+  { "state": "ToDoを作成", "rules": [
+    {"g":"プレイブックを選択","to":[["act","playbooks/<title>.md を全文開く"]],"h":"24bd6eb895:a8"},
+    {"g":"作業固有のToDoを追加する前","to":[["act","プレイブックのステップを原文のまま先頭にコピー"]],"h":"24bd6eb895:a8 e8d856f027:c5"},
+    {"g":"実施しないステップ","to":[["act","skip: <reason> を添えて残す"]],"h":"24bd6eb895:a8"},
+    {"g":"複数段階のタスクを開始","to":[["act","「Principles 節を全文読む」を ToDo の先頭に配置"]],"h":"24bd6eb895:a1 e8d856f027:d0"}
+  ] },
+  { "state": "設計", "rules": [
+    {"g":"単純ではない変更／アーキテクチャの判断／「本当に大丈夫か」","to":[["skill","how"]],"h":"24bd6eb895:a2 bf0c7cd80a:d0"},
+    {"g":"関数の境界をまたぐコード（実装前）","to":[["skill","architect"],["act","複数の設計を並行して検討"]],"h":"24bd6eb895:a2"},
+    {"g":"ロジックを書く前","to":[["prin","土台から考える","principle-foundational-thinking"]],"h":"24bd6eb895:a3"},
+    {"g":"前例のない操作・アーキテクチャ判断","to":[["prin","設計の選択肢を検討し尽くす","principle-exhaust-the-design-space"],["act","試作を2〜3案"]],"h":"24bd6eb895:a3"},
+    {"g":"既存設計に新要件を統合","to":[["prin","第一原理から再設計する","principle-redesign-from-first-principles"]],"h":"24bd6eb895:a3"},
+    {"g":"製品・UX・機能範囲のトレードオフ","to":[["prin","体験を優先する","principle-experience-first"]],"h":"24bd6eb895:a3"},
+    {"g":"単純ではない複数段階の作業","to":[["act","スループットの確認項目を記述（Feature ステップ3）"]],"h":"24bd6eb895:a2"},
+    {"g":"設計に異論がある（リリース前）","to":[["skill","interrogate"]],"h":"24bd6eb895:a2 3fe2823ce1:c1"}
+  ] },
+  { "state": "実装", "rules": [
+    {"g":"コードを書く","to":[["act","データ構造を明示"],["prin","ドメインをモデル化する","principle-model-the-domain"]],"h":"24bd6eb895:a2 a8145426e5:c0 3fe2823ce1:c0"},
+    {"g":"差分の規模を決定／抽象化・層を追加したくなる","to":[["prin","怠惰の原則","principle-laziness-protocol"]],"h":"24bd6eb895:a3"},
+    {"g":"追加・リファクタリング・書き換えの順序を決定","to":[["prin","追加の前に削る","principle-subtract-before-you-add"]],"h":"24bd6eb895:a3"},
+    {"g":"単純ではない作業を手作業で進めようとしている","to":[["prin","作業を支える道具を作る","principle-build-the-lever"]],"h":"7b1c32e4c3:a0 ba7781cce6:c0"},
+    {"g":"フェーズ境界が明確な書き換え・移行","to":[["prin","到達点を基準に実行する","principle-outcome-oriented-execution"]],"h":"24bd6eb895:a3"},
+    {"g":"追跡しづらいコードのレビュー・構成変更","to":[["prin","読み手の負荷を減らす","principle-minimize-reader-load"]],"h":"24bd6eb895:a3"},
+    {"g":"検証・エラー処理・アダプターを接続","to":[["prin","境界を守る","principle-boundary-discipline"]],"h":"24bd6eb895:a3","gap":true},
+    {"g":"型・シグネチャを設計","to":[["prin","型システムを活用する","principle-type-system-discipline"]],"h":"24bd6eb895:a3"},
+    {"g":"クラッシュ・再試行が起こるコマンド・ループ","to":[["prin","操作を冪等にする","principle-make-operations-idempotent"]],"h":"24bd6eb895:a3"},
+    {"g":"旧呼び出し元が残る状態で新しい内部APIを導入","to":[["prin","呼び出し元を移行して旧APIを削除する","principle-migrate-callers-then-delete-legacy-apis"]],"h":"24bd6eb895:a3"},
+    {"g":"複数の主体が同じファイル・ブランチ・キーへ書き込む","to":[["prin","共有状態を直列化する前に分離する","principle-separate-before-serializing-shared-state"]],"h":"24bd6eb895:a3"},
+    {"g":"CLI・TUIを提供","to":[["skill","control-cli"]],"h":"24bd6eb895:a2","gap":true},
+    {"g":"ブラウザ・Electron・Web UIを提供","to":[["skill","control-ui"]],"h":"24bd6eb895:a2"},
+    {"g":"コメントを書く","to":[["act","コードで示せない自明でない理由に限定"]],"h":"24bd6eb895:a7"}
+  ] },
+  { "state": "検証", "rules": [
+    {"g":"バグ修正","to":[["act","まず自分で同じ操作面から再現"]]},
+    {"g":"症状を修正","to":[["prin","根本原因を直す","principle-fix-root-causes"]],"h":"24bd6eb895:a3 e5136d8241:c1"},
+    {"g":"同じ前提の修正が2回以上、同じ確認に失敗","to":[["prin","前提を疑う","principle-attack-the-premise"]],"h":"e8d856f027:a2 e5136d8241:c0"},
+    {"g":"テストを追加・変更・維持","to":[["prin","実装ではなく振る舞いをテストする","principle-test-behavior-not-implementation"]],"h":"e8d856f027:a3 e5136d8241:c2"},
+    {"g":"複数段階の作業・移行・コミットやPRの積み重ね","to":[["prin","検証可能な単位を順に進める","principle-sequence-verifiable-units"]],"h":"27daaa3091:a0"},
+    {"g":"ベンチマーク・性能測定の数値を報告・判断に使用する前","to":[["skill","benchmark-checklist"]],"h":"23e4138daa:a1"},
+    {"g":"測定の前／測定値を信頼・報告・利用する前","to":[["prin","数値を説明する","principle-explain-the-number"]],"h":"23e4138daa:a2 ab1f702ce8:c1"},
+    {"g":"完了を宣言する前","to":[["prin","動くことを証明する","principle-prove-it-works"]],"h":"24bd6eb895:a3"}
+  ] },
+  { "state": "コミット前", "rules": [
+    {"g":"コミットする","to":[["skill","deslop"]],"h":"24bd6eb895:a2"},
+    {"g":"コミットメッセージを書く","to":[["skill","technical-writing"]],"h":"b047069f4f:a0"}
+  ] },
+  { "state": "レビュー前", "rules": [
+    {"g":"レビューに出す","to":[["skill","no-comments"]],"h":"b047069f4f:a1"}
+  ] },
+  { "state": "PRを作成", "rules": [
+    {"g":"プレイブックの最後","to":[["pb","Opening a PR","PRの作成"]],"h":"24bd6eb895:a8"},
+    {"g":"PR説明を書く","to":[["skill","technical-writing"]],"h":"b047069f4f:a0"},
+    {"g":"PRの ## Why を書く","to":[["act","ユーザーの目的から開始"]],"h":"ab1f702ce8:a0"}
+  ] },
+  { "state": "PRを仕上げる", "rules": [
+    {"g":"「PR Xを確認して」「CIを通して」「Bugbotの指摘に対応して」「未対応のものはあるか」","to":[["pb","Babysit","PRの仕上げ"]],"h":"99559f2f52:a0"},
+    {"g":"PRを開いただけ","to":[["act","起動しない"]],"h":"99559f2f52:a0"},
+    {"g":"PRを開いた後","to":[["skill","babysit"],["act","Cursor 組み込みのスキル"]],"h":"24bd6eb895:a2 99559f2f52:d0"},
+    {"g":"ポーリングの前","to":[["act","モードを宣言"]],"h":"99559f2f52:a0"},
+    {"g":"Cursor組み込みの babysit","to":[["stop","使用しない"]],"h":"99559f2f52:a0"},
+    {"g":"フェーズ担当エージェントの内部","to":[["stop","drive を使用しない"]],"h":"99559f2f52:a0"},
+    {"g":"Bugbot・セキュリティレビューのコメント","to":[["act","bugbot-triage.md で個別に評価"],["act","修正／却下／質問"]],"h":"97d645a601:a0 99559f2f52:c2"}
+  ] },
+  { "state": "マージ", "rules": [
+    {"g":"CI成功済みのPRスタックのマージ・リリースの依頼","to":[["pb","Shipping","リリース"]],"h":"99559f2f52:a1 23a56e2dac:c2"},
+    {"g":"各PRへの独立した判定が完了する前","to":[["stop","実行を有効化しない"]],"h":"99559f2f52:a1"},
+    {"g":"根元から連続して検証済みの部分","to":[["act","順にマージ"]],"h":"99559f2f52:a1"}
+  ] },
+  { "state": "返答", "rules": [
+    {"g":"プレイブックを終了","to":[["skill","unslop"],["act","「返答の書き方」の形式"]],"h":"24bd6eb895:a6"},
+    {"g":"最終報告・最終返答を書く","to":[["act","ユーザーの目的から開始"]],"h":"ab1f702ce8:a0"},
+    {"g":"完全に指定された1行の編集の後","to":[["act","目的の再掲を省略"]],"h":"ab1f702ce8:a0"},
+    {"g":"判断に原則を使用","to":[["act","原則と、それによって変更した選択を提示"]],"h":"24bd6eb895:a1"},
+    {"g":"主張を記載","to":[["act","同じ文に根拠または確度（実測・推論・推測）"]],"h":"f8abeddd18:a0"},
+    {"g":"リンク・引用を記載","to":[["act","このセッションで作成・読了した成果物に限定"]],"h":"24bd6eb895:a6"},
+    {"g":"返答を書く","to":[["act","利用者と保守担当者への影響から説明"]],"h":"c532aa167c:a0"}
+  ] }
+],
+"any": [
+  { "state": "分岐で質問したくなった", "rules": [
+    {"g":"AskQuestion の前","to":[["act","問いの種類を分類"]],"h":"318e8f74cc:a0"},
+    {"g":"実行して観察できる事実（動作・所要時間・レイアウト・出力・性能）","to":[["pb","Prototype","試作"],["act","結果で決定"]],"h":"318e8f74cc:a0"},
+    {"g":"出典付きの回答が成果物の読み取り専用 Investigation","to":[["act","試作せず証拠に基づいて回答"]],"h":"318e8f74cc:a0"},
+    {"g":"実験で決着できない製品判断・好み","to":[["skill","AskQuestion"]],"h":"318e8f74cc:a0"},
+    {"g":"可逆な作業で「Xをすべきか」","to":[["prin","人間待ちで止まらない","principle-never-block-on-the-human"]],"h":"24bd6eb895:a3"},
+    {"g":"完全な自律実行の許可範囲内の判断","to":[["act","自分で決定・実行・結果を報告"]],"h":"70b2dc8b4b:a0","gap":true},
+    {"g":"許可範囲内でも運用者しか決定できない事項","to":[["act","既定値を適用し、理由と変更の指示方法を報告"]],"h":"70b2dc8b4b:a0 23e4138daa:c0"},
+    {"g":"運用者が明示した承認条件","to":[["stop","本人の確認"]],"h":"70b2dc8b4b:a0"}
+  ] },
+  { "state": "操作の直前", "rules": [
+    {"g":"可逆な作業・外部への操作（チームチャット・チケット更新・評価の起動）","to":[["act","確認を求めず実行"]],"h":"24bd6eb895:a4"},
+    {"g":"共有ブランチへの force-push／デプロイ／データ削除／顧客へのメッセージ","to":[["stop","必ず停止"]],"h":"24bd6eb895:a4"},
+    {"g":"「止まらないで」「寝る」「終わるまで実行して」「完全に自律で」","to":[["act","作業を継続"]],"h":"24bd6eb895:a4"},
+    {"g":"「すべきか」と質問された／範囲の追加を提案された","to":[["act","自分の判断を回答。拒否・異論を含む"]],"h":"24bd6eb895:a4"}
+  ] },
+  { "state": "作業を委任", "rules": [
+    {"g":"プレイブックのステップ内で起動","to":[["act","subagent_type: poteto-agent"]],"h":"24bd6eb895:a5"},
+    {"g":"interrogate・reflect・swarm の内部","to":[["act","各スキルが指定する subagent_type"]],"h":"24bd6eb895:a5 91dd7b7119:c0 bf0c7cd80a:c1"},
+    {"g":"Task を呼び出す（実行中のエージェントへの指示変更・再開を含む）","to":[["act","バックグラウンド・エージェントモード・ファイル参照・モデル明示"]],"h":"24bd6eb895:a5 ab1f702ce8:c2"},
+    {"g":"サブエージェントへの指示を書く","to":[["act","ユーザーの目的を再掲"]],"h":"ab1f702ce8:a0"},
+    {"g":"網羅性の確認／競争実行／多段階の評価／探索範囲の分割","to":[["skill","swarm"]],"h":"b79f8ca89e:a0","gap":true},
+    {"g":"複数の設計・実装を比較し、土台を選択して長所を統合","to":[["skill","arena"]],"h":"b79f8ca89e:a0"},
+    {"g":"大量出力・長いファイル・繰り返しの読み込み","to":[["prin","コンテキストを守る","principle-guard-the-context-window"]],"h":"24bd6eb895:a3"},
+    {"g":"修正・追加対応・再試行・次のキュー項目","to":[["act","範囲を統合して新しいサブエージェント"]],"h":"24bd6eb895:a5 23e4138daa:c3","gap":true},
+    {"g":"ローカルのチェックアウト・未コミット変更・稼働中の開発サーバーが必要","to":[["act","既存エージェントを再開"]],"h":"23e4138daa:a3"},
+    {"g":"セカンドオピニオン","to":[["act","別のモデルに同じプロンプト"]],"h":"24bd6eb895:a5"},
+    {"g":"報告が返った","to":[["act","差分を確認し、自分で要約"]],"h":"24bd6eb895:a5"}
+  ] },
+  { "state": "モデルを選択", "rules": [
+    {"g":"コードの委任・文章・判断","to":[["m","claude-opus-5-5-xhigh"]],"h":"24bd6eb895:a5 ec44aed93c:c0 6605d7adc3:c0 dc2fae6625:c0 e1007b141f:c0 63d938c2e4:c0 23a56e2dac:c0 70b2dc8b4b:c1 df581122cd:c0 bf0c7cd80a:c2"},
+    {"g":"横断的な設計・難しい並行処理・繊細なアルゴリズム","to":[["act","hardest tasks"],["m","claude-fable-5-2-max"]],"h":"9b80b53498:a0 3fe2823ce1:c2 23a56e2dac:c0 e8d856f027:c4 70b2dc8b4b:c2 df581122cd:c0 bf0c7cd80a:c2"},
+    {"g":"単純な機械的変更","to":[["act","swarm workers"],["m","claude-opus-5-5-high-fast"]],"h":"3fe2823ce1:a2 bf0c7cd80a:c2"},
+    {"g":"検証","to":[["act","swarm workers のモデルと速度を維持"],["m","claude-opus-5-5-high-fast"]],"h":"ce649c03ac:a1 bf0c7cd80a:c2"},
+    {"g":"レビュー・設計のパネル（各1）","to":[["m","claude-fable-5-2-high"],["m","claude-opus-5-5-high-fast"],["m","gemini-4-carbon-high"]],"h":"bf0c7cd80a:a2"},
+    {"g":"ルールに # defaults: 2 の行がない","to":[["act","既存の行を維持し、/setup-pstack の再実行をセッションに1回案内"]],"h":"bf0c7cd80a:a3"},
+    {"g":"役割の行が inherit-parent または auto","to":[["act","Task の model を省略し、親モデルで実行"]],"h":"63432f3196:a1"},
+    {"g":"開始レベル（/setup-pstack の予算）","to":[["act","既定は xhigh または high。hardest tasks は max"]],"h":"ce649c03ac:a1 bf0c7cd80a:c4","gap":true},
+    {"g":"最難関・繊細な仕事","to":[["act","推論レベルを1段階上げる（上限 max）"]],"h":"ce649c03ac:a1"},
+    {"g":"判断","to":[["act","推論レベルを1段階下げる"]],"h":"ce649c03ac:a1"},
+    {"g":"定型作業","to":[["act","推論レベルを2段階以上下げる"]],"h":"ce649c03ac:a1"},
+    {"g":"CI・trunkの破損／誰かが結果待ちで停止","to":[["act","fastモード"]],"h":"ce649c03ac:a1"},
+    {"g":"推論レベルと速度を調整","to":[["act","モデル系列は維持。Fable は Claude と別の系列"]],"h":"ce649c03ac:a1 bf0c7cd80a:c4"},
+    {"g":"Gemini で high 以上が必要","to":[["m","gemini-4-carbon-high"]],"h":"bf0c7cd80a:a4"},
+    {"g":"緊急の Fable 5.2","to":[["act","標準速度でレベルを維持"]],"h":"bf0c7cd80a:a4"},
+    {"g":"調整した識別子をTaskが拒否","to":[["act","役割の設定または既定値を使用して報告"]],"h":"ce649c03ac:a1","gap":true},
+    {"g":"役割の設定・既定値も拒否","to":[["act","呼び出し元スキルの代替手段"]],"h":"ab1f702ce8:a3"},
+    {"g":"拒否済みの識別子","to":[["stop","再送しない"]],"h":"ab1f702ce8:a3"},
+    {"g":"呼び出し元スキルに代替手段がない","to":[["act","エラーが示す有効な識別子から同系列で最も近いもの"]],"h":"ab1f702ce8:a3"},
+    {"g":"有効な一覧に該当なし／代替手段を使い切った","to":[["act","model を省略して親モデルで実行し、報告"]],"h":"ab1f702ce8:a3"},
+    {"g":"厳密に指定された手順を文字どおり実行する最難関の作業","to":[["act","最強の指示追従モデル"]],"h":"3fe2823ce1:a2 e1007b141f:c1 23a56e2dac:c1 e8d856f027:d4"}
+  ] },
+  { "state": "文章を書く", "rules": [
+    {"g":"文章を書く（ユーザーへの返答を含む）","to":[["skill","unslop"]],"h":"24bd6eb895:a2"},
+    {"g":"エージェント向けの文章","to":[["skill","unslop"],["skill","create-skill"]],"h":"24bd6eb895:a2"},
+    {"g":"ドキュメント・RFC・README・PR説明・コミットメッセージ","to":[["skill","technical-writing"]],"h":"b047069f4f:a0"},
+    {"g":"同じ指示を二度書いている","to":[["prin","教訓を構造に組み込む","principle-encode-lessons-in-structure"],["act","lint・フラグ・スクリプト"]],"h":"24bd6eb895:a3"}
+  ] },
+  { "state": "長時間・不在の作業", "rules": [
+    {"g":"長時間／自律実行／複数フェーズ／「寝る」「戻ったときに安心できるように」「Xまで /loop」","to":[["skill","show-me-your-work"]],"h":"35f33923cd:a0"},
+    {"g":"監査可能な記録が必要な重要度","to":[["act","判断の記録をコミット"]],"h":"35f33923cd:a0"},
+    {"g":"それ以外","to":[["act","判断の記録をローカルに保存"]],"h":"35f33923cd:a0"}
+  ] },
+  { "state": "壊れたスキルを発見", "rules": [
+    {"g":"作業中に発見","to":[["act","別PRで修正"],["act","本来の作業を継続"]],"h":"24bd6eb895:a2"},
+    {"g":"黙って回避","to":[["stop","禁止"]],"h":"24bd6eb895:a2"}
+  ] }
+]
+}

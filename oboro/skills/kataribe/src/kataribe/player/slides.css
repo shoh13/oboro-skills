@@ -1,0 +1,94 @@
+/* スライドの寸法は、ステージの幅に対する比率（cqw）で決める。ステージは 16:9 で、高さは 56.25cqw。
+   立ち絵は figures.js が置き、上端はステージの高さの 390/720（= 30.47cqw）。吹き出しはその上に出す。 */
+:root {
+  --bg: #fcfbf8;
+  --fg: #1c1c1c;
+  --muted: #666;
+  --line: #d9d6cc;
+  --stage: #ffffff;
+  --bubble: #ffffff;
+  --accent: #3b6fd8;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17181a; --fg: #ececec; --muted: #9a9a9a; --line: #3a3b3e; --stage: #202124; --bubble: #2a2b2f; --accent: #7aa2f7; }
+}
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+#kataribe-slides { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+#kataribe-stage {
+  position: relative; aspect-ratio: 16 / 9; container-type: inline-size; overflow: hidden;
+  border: 2px solid var(--line); border-radius: 12px; background: var(--stage); cursor: pointer; user-select: none;
+}
+#kataribe-stage:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+#kataribe-head { position: absolute; top: 2.2cqw; left: 4cqw; right: 4cqw; }
+#kataribe-chapter { margin: 0; font-size: 1.25cqw; font-weight: 700; color: var(--muted); min-height: 1.5em; }
+#kataribe-heading { margin: 0.2cqw 0 0; font-size: 2.7cqw; line-height: 1.3; padding-bottom: 0.8cqw; border-bottom: 0.25cqw solid var(--line); }
+
+#kataribe-body {
+  position: absolute; top: 10.5cqw; bottom: 2.5cqw; left: 24cqw; right: 24cqw;
+  display: flex; flex-direction: column; gap: 1.2cqw; overflow: hidden;
+}
+#kataribe-stage[data-cast="0"] #kataribe-body { left: 6cqw; right: 6cqw; }
+#kataribe-visual { flex: 0 1 auto; min-height: 0; font-size: 1.6cqw; }
+#kataribe-visual section[data-scene]:not(.kataribe-active) { display: none; }
+#kataribe-visual section[data-scene] > :first-child { margin-top: 0; }
+#kataribe-visual [data-kataribe-state="hidden"] { visibility: hidden; }
+#kataribe-visual [data-kataribe-focus-state="active"] { outline: 0.25cqw solid var(--fg); outline-offset: 0.25cqw; }
+#kataribe-visual [data-kataribe-focus-state="dim"] { opacity: 0.35; }
+
+#kataribe-narration { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+#kataribe-narration p {
+  margin: 0 0 1cqw; padding-left: 1.1cqw; border-left: 0.35cqw solid transparent;
+  font-size: 1.85cqw; line-height: 1.75; transition: opacity 0.25s, border-color 0.25s;
+}
+#kataribe-narration p[data-state="past"] { opacity: 0.55; }
+#kataribe-narration p[data-state="current"] { border-left-color: var(--accent); }
+#kataribe-narration p[data-state="future"] { visibility: hidden; }
+
+#kataribe-characters { position: absolute; inset: 0; pointer-events: none; }
+.kataribe-character { position: absolute; display: block; transform-origin: 50% 100%; }
+.kataribe-character[data-speaking="1"] { animation: kataribe-hop 0.32s ease-out; }
+@keyframes kataribe-hop { 0% { transform: translateY(0); } 40% { transform: translateY(-1.2cqw); } 100% { transform: translateY(0); } }
+
+#kataribe-bubbles { position: absolute; inset: 0; pointer-events: none; }
+.kataribe-bubble {
+  position: absolute; bottom: 27cqw; width: 20.5cqw; box-sizing: border-box; max-height: 16cqw;
+  padding: 0.9cqw 1.3cqw 1.1cqw; border: 0.28cqw solid var(--c); border-radius: 1.6cqw; background: var(--bubble);
+  font-size: 1.55cqw; line-height: 1.6; box-shadow: 0 0.4cqw 1.2cqw rgb(0 0 0 / 0.08);
+  transition: opacity 0.25s, transform 0.25s;
+}
+.kataribe-bubble[data-side="left"] { left: 1.6cqw; }
+.kataribe-bubble[data-side="right"] { right: 1.6cqw; }
+.kataribe-bubble::after {
+  content: ""; position: absolute; top: 100%; width: 1.6cqw; height: 1.6cqw; margin-top: -0.85cqw;
+  background: var(--bubble); border: solid var(--c); border-width: 0 0.28cqw 0.28cqw 0; transform: rotate(45deg);
+}
+.kataribe-bubble[data-side="left"]::after { left: 8.6cqw; }
+.kataribe-bubble[data-side="right"]::after { right: 8.6cqw; }
+.kataribe-bubble b { display: block; font-size: 1.1cqw; color: var(--c); margin-bottom: 0.2cqw; }
+.kataribe-bubble[data-state="hidden"] { opacity: 0; transform: translateY(0.8cqw) scale(0.97); }
+.kataribe-bubble[data-state="past"] { opacity: 0.5; }
+
+#kataribe-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 0.45cqw; background: transparent; }
+#kataribe-progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+
+#kataribe-controls { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 12px; }
+#kataribe-controls button { font: inherit; font-size: 1.1rem; padding: 6px 18px; border: 2px solid var(--line); border-radius: 8px; background: transparent; color: var(--fg); cursor: pointer; }
+#kataribe-controls button:disabled { color: var(--muted); cursor: default; }
+#kataribe-controls select { font: inherit; max-width: 50%; padding: 6px 8px; border: 2px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); cursor: pointer; }
+#kataribe-counter { min-width: 5em; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+#kataribe-hint { margin: 8px 0 0; text-align: center; font-size: 0.8rem; color: var(--muted); }
+
+#kataribe-about { margin-top: 24px; padding-top: 12px; border-top: 2px solid var(--line); font-size: 0.9rem; color: var(--muted); }
+#kataribe-about:empty { display: none; }
+#kataribe-about h2 { font-size: 0.9rem; margin: 12px 0 4px; color: var(--fg); }
+#kataribe-about p, #kataribe-about ul { margin: 0; }
+#kataribe-about ul { padding-left: 1.2em; }
+#kataribe-about a { color: inherit; }
+#kataribe-about [data-about="description"] p { white-space: pre-wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kataribe-character[data-speaking="1"] { animation: none; }
+  .kataribe-bubble, #kataribe-narration p, #kataribe-progress span { transition: none; }
+}

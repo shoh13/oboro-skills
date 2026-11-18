@@ -1,0 +1,6 @@
+{
+  "name": "oboro-skills",
+  "plugins": [
+    { "name": "oboro", "source": "./oboro" }
+  ]
+}

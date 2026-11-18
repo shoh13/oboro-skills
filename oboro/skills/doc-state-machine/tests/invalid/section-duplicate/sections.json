@@ -1,0 +1,9 @@
+[
+  { "id": "s0", "tab": "総論", "level": 0, "title": "（冒頭）", "url": "https://example.com/spec#s0", "text": "受付サーバは Web 用と端末用の2種類とする。" },
+  { "id": "s1", "tab": "Web 用", "level": 2, "title": "受付", "url": "https://example.com/spec#s1", "text": "" },
+  { "id": "s2", "tab": "Web 用", "level": 3, "title": "id パラメータを必須とする", "url": "https://example.com/spec#s2", "text": "id は3文字以上とする。RFC 9999 では任意だが必須とする。" },
+  { "id": "s3", "tab": "Web 用", "level": 3, "title": "整理券を発行する", "url": "https://example.com/spec#s3", "text": "受付後に整理券を発行する。有効期間は 30 分とする。" },
+  { "id": "s4", "tab": "Web 用", "level": 3, "title": "更新の規定", "url": "https://example.com/spec#s4", "text": "会員は発行時 7 日、使用時は延長しない。非会員は発行時 1 日、使用時に短縮する。" },
+  { "id": "s5", "tab": "端末用", "level": 3, "title": "端末用の受付", "url": "https://example.com/spec#s5", "text": "端末用は POST を受け付けない。署名の検証は望ましい。旧方式は当面実装しない。" },
+  { "id": "s5", "tab": "総論", "level": 3, "title": "参考文献", "url": "https://example.com/spec#s6", "text": "RFC 9999", "skip": "参考文献の一覧で、規定を含まない" }
+]

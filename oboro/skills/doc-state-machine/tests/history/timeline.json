@@ -1,0 +1,6 @@
+[
+  {"sha":"ccccccc","date":"2026-03-01","title":"`id` の空白の扱い・非会員の期限・署名の検証を変更","add":3,"del":3,"star":true},
+  {"sha":"bbbbbbb","date":"2026-02-01","title":"`id` の文字数のエラーと更新の期限を追加し、旧形式と GET を削除","add":12,"del":6,"pr":12,"star":true},
+  {"sha":"ddddddd","date":"2026-01-15","title":"用語の表記を統一","add":2,"del":2},
+  {"sha":"aaaaaaa","date":"2026-01-01","title":"初版","add":120,"del":0,"star":true}
+]

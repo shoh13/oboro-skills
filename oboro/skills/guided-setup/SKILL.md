@@ -1,0 +1,116 @@
+---
+name: guided-setup
+description: "親から渡された外部サービス・CLI・認証のセットアップ目標を、検証済み証拠パケットまたはトップレベル起動時だけ取得する公式情報と現在状態に基づいて1ステップずつ案内・検証し、秘密値を扱わずに設定状況、権限、再開地点、取消方法を返すモデル起動プリミティブ。開発環境全体の設計、保存先決定、複数サービスの一括設定には使わない。"
+user-invocable: false
+---
+
+<callout icon="🪄" color="purple_bg">
+外部サービス、CLI、認証の不足を、現在状態から1アクションずつ安全に解消し、検証済みの設定状況だけを親へ返す。
+</callout>
+
+## 完了条件
+
+- 1つのセットアップ目標、対象サービス、環境、必要権限、完了確認方法が明確である。
+- 人間の操作が必要な手順が1ステップずつ実行・確認されている。
+- 非破壊の確認で設定または接続の存在が検証されている。
+- 秘密情報がチャット、文書、ログ、出力Contractへ残っていない。
+- 親へ設定状況、権限範囲、検証結果、再開地点、取消方法が返されている。
+
+## 合成Contract
+
+### 入力
+
+- 1つのセットアップ目標。
+- 対象サービス、アカウント、環境。
+- 必要な最小権限。
+- 現在確認できている状態。
+- 完了時の非破壊な確認方法。
+- 共通実行コンテキスト7項目：環境、対象、基準保存先、適用ポリシー、確認済み事項、作業範囲、禁止範囲。
+- 任意のverified evidence packet：`source_scope_hash`、凍結したHard Source Allowlist、claims、source pointers、Target identity、Retrieved at。
+
+### verified evidence packetの継承
+
+- 親からpacketが渡された場合、Hard Source Allowlistと`source_scope_hash`の整合、Target identityの完全一致、freshness、今回必要なclaims、全source pointerのallowlist内一致を検査する。
+- 合格したpacketをそのまま使用し、保存先を再解決せず、`evidence-research`を再起動しない。
+- allowlist、target、freshness、必要claim、pointerのいずれかが不足または不一致なら、guided-setup自身で調査を代行せず、failure type、受領packet、停止理由、再開地点を親へ返して停止する。
+
+### evidence-research
+
+- 条件：verified evidence packetが提供されていないトップレベル起動で、画面、CLI、認証手順、権限、URLがサービスの現在仕様に依存する場合だけ。
+- 渡すもの：共通実行コンテキスト7項目、確認すべき1つの手順、Target identity、対象サービス、環境、基準日、公式情報限定のHard Source Allowlistと証拠水準。
+- 受け取るもの：`source_scope_hash`、claims、source pointers、Target identity、Retrieved at、公式手順、現在の画面ラベル、必要権限、制約、確認方法、不確実性。
+- 副作用：なし。
+- 不足時：対象アカウントまたは環境が結果を変える場合だけ子が確認する。
+- 競合時：親の権限・公開範囲・禁止範囲と公式手順が衝突したら停止して親へ返す。
+- 起動失敗時：子固有手順を代行せず、失敗依存名、渡したContract、部分成果、副作用、再開地点を返し、後続を0件のまま停止する。
+
+## 出力Contract
+
+- **Target：**設定した対象。
+- **Status：**configured、partial、blocked、skippedのいずれか。
+- **Verified：**実行した非破壊な確認と結果。
+- **Permissions：**付与・利用した権限範囲。
+- **Secrets：**値を含めず、設定先と変数名またはcredential名だけ。
+- **Resume point：**中断時の次の1ステップ。
+- **Rollback：**接続解除または設定取消の方法。
+- **Notes：**親の環境設定へ記録すべき非秘密情報。
+
+## 手順
+
+1. 入力を検査し、目標を1サービス・1接続・1権限境界へ絞る。複数なら親へ分割案を返す。
+2. verified evidence packetが渡された場合は、allowlist、`source_scope_hash`、Target identity、freshness、必要claims、source pointersを検査する。合格なら再調査せず使用し、不足・不一致なら停止する。
+3. packetがないトップレベル起動で現在仕様に依存する場合だけ`evidence-research`を1回呼ぶ。子起動失敗時は代行せずfail-fastする。
+4. AIが接続済みツールで安全に直接実行できる操作と、人間しか行えない操作を分ける。
+5. 全体の工程数、変更対象、課金・公開範囲・権限への影響を短く示す。
+6. 現在の1ステップだけを提示する。アクセス先、画面ラベルまたはCLI操作、期待結果を含める。
+7. 秘密情報は安全な入力手段またはサービス画面で入力させ、チャットへの貼り付けを求めない。
+8. 各ステップ後に、現在実行可能な「完了」「エラー」「スキップ」だけを提示して結果を確認する。
+9. エラー時は先へ進まず、現在状態と完了済み手順から原因を1つずつ切り分ける。
+10. 最後に読み取りまたは疎通確認で設定を検証する。
+11. 出力Contractを親へ返し、秘密値や一時コードを含めない。
+
+## 判断基準
+
+- 最小権限を既定にし、目的に不要な管理者権限を選ばない。
+- 課金、公開、削除、広範な権限付与は実行直前に影響を示して確認する。
+- AIが安全に実行できる操作を、人間の手順へ押し戻さない。
+- 表示が公式手順と違う場合は推測せず、現在状態を再確認する。
+- 親から合格可能なverified evidence packetを受け取った場合、同じ境界の証拠取得と保存先解決を繰り返さない。
+- 成否をユーザーの自己申告だけで確定せず、可能な限り非破壊に検証する。
+
+## 禁止事項
+
+- 複数サービスや複数権限境界を一度に扱う。
+- 長い手順を一括提示する。
+- APIキー、パスワード、ワンタイムコード、秘密鍵をチャットまたは文書へ貼らせる。
+- 非公式情報だけで現在の画面、URL、権限を断定する。
+- 親からverified evidence packetを受け取った後に`evidence-research`を再起動する。
+- packetの不足・不一致をguided-setup自身の調査で補う。
+- エラーまたは子起動失敗を解消せず後続手順へ進む。
+- 秘密値を保存、再表示、親へ返却する。
+- 開発環境全体の設定ファイルを書き換える。
+
+## 検証
+
+- 公式の画面、CLI、またはAPIで設定が存在することを確認する。
+- 目的を満たす最小権限であることを確認する。
+- 秘密情報がチャット、ページ、ログ、出力に残っていないことを確認する。
+- 出力Contractに再開地点と取消方法があることを確認する。
+- 親の作業範囲と禁止範囲を越えていないことを確認する。
+- packet提供時にallowlist、`source_scope_hash`、Target identity、freshness、必要claims、source pointersを検査していることを確認する。
+- packet使用時の`evidence-research`再起動が0、保存先再解決が0、秘密値が0であることを確認する。
+- 子起動失敗時に後続0、親代行0、再開地点ありでfail-fastすることを確認する。
+
+## 検証履歴
+
+<date start="2026-09-20" /> の作成時点では静的検査だけを完了し、実動検証は未実施だった。その後、Phase 13で次を検証した。
+
+- [x] Relationと本文の呼び出し先が`evidence-research`で一致する。
+- [x] verified evidence packet提供時はallowlist、hash、Target identity、freshness、必要claims、pointersを検査する。
+- [x] packet合格時の二重調査0、保存先再解決0、秘密値0を維持する。
+- [x] packet不一致では自己調査・設定・後続0でfail-fastする。
+- [x] 最小権限、非破壊検証、再開地点、取消方法を返す。
+
+- 現行証拠：[Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb)
+
+Phase 13の正常系・境界系・fail-fast検証に合格し、ライフサイクルは`安定版`である。

@@ -1,0 +1,79 @@
+[
+ {
+  "id": "sampledoc",
+  "level": 1,
+  "title": "Sample_doc",
+  "url": "https://example.com/blob/abc/sample.md#sample_doc",
+  "text": "冒頭の本文。"
+ },
+ {
+  "id": "sampledoc/規則",
+  "level": 2,
+  "title": "規則",
+  "url": "https://example.com/blob/abc/sample.md#規則",
+  "text": "- **範囲**が適切であること（太字が文の途中に続くため分割しない）\n項目の後の字下げのない行は親の本文に戻る。"
+ },
+ {
+  "id": "sampledoc/規則/investigation",
+  "level": 3,
+  "title": "Investigation",
+  "url": "https://example.com/blob/abc/sample.md",
+  "text": "Read-only question."
+ },
+ {
+  "id": "sampledoc/規則/defaults-for-every-task-call",
+  "level": 3,
+  "title": "Defaults for every `Task` call",
+  "url": "https://example.com/blob/abc/sample.md",
+  "text": "段落の項目。"
+ },
+ {
+  "id": "sampledoc/規則/依頼の最初のメッセージ",
+  "level": 3,
+  "title": "依頼の最初のメッセージ",
+  "url": "https://example.com/blob/abc/sample.md",
+  "text": "→ 目的を伝達する"
+ },
+ {
+  "id": "sampledoc/規則/パスエイリアス",
+  "level": 3,
+  "title": "パスエイリアス `@/`",
+  "url": "https://example.com/blob/abc/sample.md",
+  "text": "→ `src/`"
+ },
+ {
+  "id": "sampledoc/規則-2",
+  "level": 2,
+  "title": "規則",
+  "url": "https://example.com/blob/abc/sample.md#規則-1",
+  "text": "```sh\n# コードブロックの中の行は見出しにしない\n```"
+ },
+ {
+  "id": "sampledoc/規則-2/これは日本語だけで構成された長い題の項目で二十四",
+  "level": 3,
+  "title": "これは日本語だけで構成された長い題の項目で二十四文字を超える",
+  "url": "https://example.com/blob/abc/sample.md",
+  "text": "本文。"
+ },
+ {
+  "id": "sampledoc/要件",
+  "level": 2,
+  "title": "要件",
+  "url": "https://example.com/blob/abc/sample.md#要件",
+  "text": "- Rule: 英大文字だけの語は ID ではないため分割しない。"
+ },
+ {
+  "id": "sampledoc/要件/r5-1",
+  "level": 3,
+  "title": "R5-1",
+  "url": "https://example.com/blob/abc/sample.md",
+  "text": "引数がない場合はパネルを開く。"
+ },
+ {
+  "id": "sampledoc/要件/ac17",
+  "level": 3,
+  "title": "AC17",
+  "url": "https://example.com/blob/abc/sample.md",
+  "text": "応答中は送信できない。"
+ }
+]

@@ -1,0 +1,14 @@
+{
+  "title": "検証用の要件",
+  "slug": "spec-fixture",
+  "brand": "検証用",
+  "name": "受付サーバ",
+  "source": { "title": "検証用の要件", "url": "https://example.com/spec" },
+  "anyLabel": "随時",
+  "transitions": "explicit",
+  "kinds": [["act", "動作", "act"], ["stop", "エラー・不可", "stop"], ["ticket", "整理券", "skill"], ["m", "値", "m"]],
+  "variants": [{ "id": "web", "label": "Web 用" }, { "id": "dev", "label": "端末用" }],
+  "levelLabels": { "should": "望ましい" },
+  "link": { "commit": "https://example.com/spec/commit/{sha}", "pr": "https://example.com/spec/pull/{pr}" },
+  "areas": ["受付", "更新"]
+}

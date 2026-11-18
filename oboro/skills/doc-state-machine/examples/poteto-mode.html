@@ -1,0 +1,1441 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Potetoモード状態機械</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f3f5f8; --dot: #c6cdd9; --panel: #ffffff; --sunk: #eef1f5;
+  --ink: #1a2233; --muted: #556072; --line: #7c879a; --shade: rgba(26,34,51,.16);
+  --state: #f2c230; --state-ink: #1a2233;
+  --skill-bg: #d3efe8; --skill-ink: #0b5a4c;
+  --prin-bg: #e6e0f7; --prin-ink: #43307f;
+  --pb-bg: #1a2233; --pb-ink: #f3f5f8;
+  --stop: #c8321f; --stop-ink: #ffffff;
+  --add: #1b8347; --add-bg: #dcf2e2;
+  --chg: #a86200; --chg-bg: #fbebc8;
+  --del: #c8321f; --del-bg: #fbe1dc;
+  --m-fable: #6b3fd4; --m-opus: #c2571a; --m-gemini: #1967c9; --m-grok: #6c7686;
+  --sans: "IBM Plex Sans JP", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --dw: 384px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #12161d; --dot: #2b3342; --panel: #1b212b; --sunk: #151a22;
+    --ink: #e4e8ef; --muted: #a3adbd; --line: #6b7689; --shade: rgba(0,0,0,.5);
+    --state: #e9b92a; --state-ink: #171b22;
+    --skill-bg: #123f38; --skill-ink: #9be3d3;
+    --prin-bg: #2e2752; --prin-ink: #cdc0f5;
+    --pb-bg: #e4e8ef; --pb-ink: #12161d;
+    --stop: #e2533f; --stop-ink: #160705;
+    --add: #5fd08a; --add-bg: #143423;
+    --chg: #f0b54a; --chg-bg: #3a2b0d;
+    --del: #ff7a66; --del-bg: #401a14;
+    --m-fable: #a98bff; --m-opus: #f0935a; --m-gemini: #6aa9ff; --m-grok: #97a1b1;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; overflow: hidden; }
+button { font: inherit; color: inherit; }
+
+#app { position: relative; height: 100%; overflow: hidden; }
+#stage {
+  position: absolute; inset: 0; overflow: hidden;
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+  background-image: radial-gradient(circle, var(--dot) 1.2px, transparent 1.6px);
+}
+#stage.dragging { cursor: grabbing; }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: max-content; padding: 96px 40px 40px; will-change: transform; }
+
+.machine { position: relative; border: 2px solid var(--line); border-radius: 32px; padding: 64px 56px 56px; }
+.machine > .name {
+  position: absolute; top: -17px; left: 44px; padding: 2px 14px;
+  background: var(--bg); font: 600 20px/1.4 var(--mono); letter-spacing: .01em;
+}
+.region { display: flex; align-items: flex-start; }
+.region.any { gap: 72px; margin-top: 64px; padding-top: 56px; border-top: 2px dashed var(--line); position: relative; }
+.region.any > .tag {
+  position: absolute; top: -13px; left: 0; padding-right: 12px;
+  background: var(--bg); color: var(--muted); font-size: 14px; font-weight: 500; letter-spacing: .12em;
+}
+
+.cluster { flex: none; }
+.head { display: flex; align-items: center; }
+.state {
+  flex: none; position: relative; background: var(--state); color: var(--state-ink);
+  border: 2px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink);
+  padding: 9px 18px; font-size: 16px; font-weight: 700; line-height: 1.35; white-space: nowrap;
+}
+.state.code { font-family: var(--mono); font-weight: 600; }
+.lead { flex: 1; min-width: 48px; height: 2px; background: var(--ink); position: relative; }
+.lead::after {
+  content: ""; position: absolute; right: -1px; top: -6px;
+  border-left: 11px solid var(--ink); border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+}
+.pseudo { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); }
+.pseudo.end { width: 24px; height: 24px; background: radial-gradient(circle, var(--ink) 0 6px, var(--bg) 6.5px 9px, var(--ink) 9.5px); }
+.cluster.pseudo-only .lead { width: 56px; flex: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .lead::before {
+    content: ""; position: absolute; top: -3px; left: 0; width: 30px; height: 8px; border-radius: 4px;
+    background: var(--state); border: 1.5px solid var(--ink); opacity: 0;
+    animation: token var(--dur, 9s) linear infinite; animation-delay: calc(var(--i, 0) * .7s);
+  }
+}
+
+.rules {
+  margin: 0 56px 0 28px; padding-top: 18px;
+  border-left: 2px solid var(--line);
+  display: flex; flex-direction: column; gap: 22px;
+}
+.region.any .rules { margin-right: 0; }
+.rule { position: relative; z-index: 0; display: grid; grid-template-columns: 252px auto; align-items: end; transition: opacity .25s; }
+.rule.gap { margin-top: 22px; }
+.rule::before {
+  content: ""; position: absolute; inset: -9px -14px -20px 6px; border-radius: 12px; z-index: -1;
+  border: 2px solid transparent;
+}
+.guard {
+  position: relative; min-height: 26px;
+  border-bottom: 2px solid var(--line);
+  padding: 0 20px 5px 14px; font-size: 13px; line-height: 1.5; color: var(--ink);
+}
+.guard::after {
+  content: ""; position: absolute; right: -1px; bottom: -6px;
+  border-left: 9px solid var(--line); border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+}
+.tos { display: flex; align-items: center; gap: 7px; padding-left: 5px; transform: translateY(50%); }
+.tos .then { color: var(--muted); font-size: 13px; }
+.t { font-size: 13px; line-height: 1.45; }
+.t.skill, .t.prin { padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+.t.skill { background: var(--skill-bg); color: var(--skill-ink); font: 600 13px/1.45 var(--mono); }
+.t.prin { background: var(--prin-bg); color: var(--prin-ink); font-weight: 500; }
+.t.pb {
+  background: var(--pb-bg); color: var(--pb-ink); padding: 4px 11px; border-radius: 5px;
+  font: 600 13px/1.45 var(--mono); white-space: nowrap;
+}
+.t.pb small { font: 400 12px/1 var(--sans); opacity: .8; margin-left: 7px; }
+.t.act { max-width: 250px; padding: 2px 4px; font-weight: 500; }
+.t.stop {
+  background: var(--stop); color: var(--stop-ink); padding: 4px 12px; border-radius: 5px;
+  font-weight: 700; white-space: nowrap;
+}
+.mc { --fam: var(--m-gemini); }
+.mc {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  padding: 3px 9px 3px 8px; border-radius: 7px; border: 1.5px solid var(--fam);
+  background: var(--panel); color: var(--ink); font: 600 12px/1.45 var(--mono);
+}
+.mc i { width: 8px; height: 8px; border-radius: 50%; background: var(--fam); }
+.mc b { font-weight: 600; color: var(--fam); }
+.mc em { font-style: normal; font-size: 10px; padding: 0 5px; border-radius: 4px; background: var(--fam); color: var(--panel); }
+
+.mk {
+  flex: none; width: 18px; height: 18px; border-radius: 50%; margin-left: 4px;
+  display: grid; place-items: center; font: 700 12px/1 var(--mono); color: var(--panel);
+}
+
+#world.focus .rule:not(.hot) { opacity: .28; }
+.rule.hot::before { border-color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .rule.hot::before { animation: ping 1.1s ease-out 2; }
+}
+@keyframes ping { 0% { box-shadow: 0 0 0 0 var(--ink); } 100% { box-shadow: 0 0 0 16px transparent; } }
+
+/* HUD */
+.hud { position: absolute; z-index: 5; }
+.glass {
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1.5px solid var(--ink); box-shadow: 0 4px 0 var(--shade);
+}
+#brand {
+  top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(14px + env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+#brand .id { align-self: flex-start; display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-radius: 12px; }
+#brand .id b { font: 600 15px/1.3 var(--mono); }
+#brand .id span { font: 600 12px/1.3 var(--mono); padding: 2px 8px; border-radius: 6px; background: var(--state); color: var(--state-ink); }
+#legend { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+#legend .t { font-size: 11px; padding-top: 2px; padding-bottom: 2px; }
+#legend .mk { margin: 0; }
+#legend .mk.a { background: var(--add); } #legend .mk.c { background: var(--chg); } #legend .mk.d { background: var(--del); }
+#app.nodiff #legend .mk { display: none; }
+#legend .mc { font-size: 11px; padding: 1px 7px; }
+#brand .id a { color: inherit; text-decoration: none; pointer-events: auto; }
+#brand .id a:hover { text-decoration: underline; text-underline-offset: 3px; }
+#app.nohist #time, #app.nohist #legend .mk, #app.nohist #dtoggle .dot, #app.nopanel #drawer { display: none; }
+
+#zoom {
+  right: calc(var(--dw) + 28px); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 6px; transition: right .28s;
+}
+#app.closed #zoom { right: calc(14px + env(safe-area-inset-right, 0px)); }
+.btn {
+  width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+  font: 500 19px/1 var(--sans); cursor: pointer;
+}
+.btn:hover { background: var(--panel); transform: translateY(-1px); }
+.btn:active { transform: translateY(2px); box-shadow: none; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+
+#mini {
+  left: calc(14px + env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  border-radius: 12px; cursor: crosshair; touch-action: none; display: block;
+}
+
+/* 更新パネル */
+#drawer {
+  top: 12px; right: 12px; bottom: 12px; width: var(--dw); border-radius: 18px;
+  display: flex; flex-direction: column; transition: transform .28s cubic-bezier(.3,.8,.3,1);
+}
+#app.closed #drawer { transform: translateX(calc(100% + 14px)); }
+#dtoggle {
+  position: absolute; left: -52px; top: 4px; width: 40px; height: 40px; border-radius: 11px;
+  display: grid; place-items: center; cursor: pointer; font-size: 17px;
+}
+#dtoggle::before { content: "›"; font: 500 22px/1 var(--sans); }
+#app.closed #dtoggle::before { content: "‹"; }
+#dtoggle .dot {
+  position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+  background: var(--chg); color: var(--panel); font: 700 11px/20px var(--mono); text-align: center;
+}
+#dtoggle .dot[data-n="0"] { background: var(--add); }
+#drawer header { display: flex; align-items: center; gap: 12px; padding: 14px 14px 10px 16px; }
+#ring { flex: none; transform: rotate(-90deg); }
+#ring circle { fill: none; stroke-width: 4; }
+#ring .bg { stroke: var(--sunk); }
+#ring .fg { stroke: var(--add); stroke-linecap: round; transition: stroke-dashoffset .4s; }
+.count { font: 600 13px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.count b { font-size: 20px; color: var(--ink); }
+.ver { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ver .v { font: 600 13px/1.3 var(--mono); white-space: nowrap; }
+.ver .v s { color: var(--muted); text-decoration-thickness: 1.5px; }
+.ver .v b { background: var(--state); color: var(--state-ink); padding: 1px 6px; border-radius: 5px; }
+.ver a { font: 500 12px/1.3 var(--mono); color: var(--muted); text-underline-offset: 3px; }
+.nav { display: flex; gap: 4px; }
+.nav button, .seg button {
+  height: 32px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--panel); cursor: pointer;
+}
+.nav button { width: 32px; font-size: 17px; }
+.nav button:hover, .seg button:hover { border-color: var(--ink); }
+.tools { display: flex; gap: 8px; padding: 0 14px 12px 16px; border-bottom: 1.5px solid var(--sunk); }
+.seg { display: flex; }
+.seg button { padding: 0 12px; font-size: 12px; font-weight: 500; }
+.seg button + button { margin-left: -1.5px; }
+.seg button:first-child { border-radius: 9px 0 0 9px; } .seg button:last-child { border-radius: 0 9px 9px 0; }
+.seg button:not(:first-child):not(:last-child) { border-radius: 0; }
+.seg button:only-child { border-radius: 9px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); position: relative; z-index: 1; }
+#list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 10px 14px; scrollbar-width: thin; }
+#list h2 {
+  position: sticky; top: 0; z-index: 2; margin: 0; padding: 12px 6px 6px;
+  background: linear-gradient(var(--panel) 70%, transparent);
+  font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--muted);
+  display: flex; justify-content: space-between;
+}
+#list h2 span { font-family: var(--mono); letter-spacing: 0; }
+.card {
+  display: grid; grid-template-columns: 26px 1fr; gap: 0 8px; padding: 9px 8px; border-radius: 12px;
+  border: 1.5px solid transparent; cursor: pointer;
+}
+.card:hover { background: var(--sunk); }
+.card.on { background: var(--sunk); border-color: var(--ink); }
+.card.done:not(.on) { opacity: .5; }
+#app.todo .card.done { display: none; }
+.chk {
+  width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--line);
+  background: var(--panel); cursor: pointer; display: grid; place-items: center; padding: 0;
+}
+.chk::before { content: "✓"; font: 700 13px/1 var(--mono); color: transparent; }
+.chk:hover { border-color: var(--add); }
+.chk:hover::before { color: var(--add); }
+.card.done .chk { background: var(--add); border-color: var(--add); }
+.card.done .chk::before { color: var(--panel); }
+.card .r1 { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
+.card .kind {
+  flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 5px; display: grid; place-items: center;
+  font: 700 12px/1 var(--mono); color: var(--panel);
+}
+.card.add .kind { background: var(--add); } .card.chg .kind { background: var(--chg); } .card.del .kind { background: var(--del); }
+.card h3 { flex: 1; min-width: 0; margin: 0; font-size: 13px; font-weight: 700; line-height: 1.55; text-wrap: pretty; }
+.card .src { flex: none; margin-top: 2px; font: 500 11px/1.5 var(--mono); color: var(--muted); white-space: nowrap; }
+.detail { display: none; grid-column: 2; padding-top: 8px; min-width: 0; }
+.card.on .detail { display: flex; flex-direction: column; gap: 8px; }
+.locs { display: flex; flex-wrap: wrap; gap: 5px; }
+.locs button {
+  padding: 3px 9px; border-radius: 8px; border: 1.5px solid var(--ink); background: var(--state); color: var(--state-ink);
+  font-size: 11px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 0 var(--ink);
+}
+.locs button:active { transform: translateY(2px); box-shadow: none; }
+.ba { border-radius: 9px; overflow: hidden; border: 1.5px solid var(--sunk); font-size: 12.5px; line-height: 1.7; }
+.ba > div { display: grid; grid-template-columns: 22px 1fr; padding: 6px 10px 6px 0; }
+.ba > div::before { text-align: center; font: 700 13px/1.7 var(--mono); }
+.ba .was { background: var(--del-bg); } .ba .was::before { content: "−"; color: var(--del); }
+.ba .now { background: var(--add-bg); } .ba .now::before { content: "+"; color: var(--add); }
+.ba code, .card h3 code { font: 500 .93em var(--mono); }
+.files { display: flex; flex-wrap: wrap; gap: 4px; }
+.files span { font: 500 10.5px/1.5 var(--mono); color: var(--muted); padding: 1px 6px; border-radius: 5px; background: var(--panel); border: 1px solid var(--sunk); word-break: break-all; }
+
+/* 全履歴 */
+.tabs { padding: 12px 14px 0 16px; }
+.tabs button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; }
+.tabs button b { font: 600 11px/1 var(--mono); opacity: .75; }
+#hist { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.hhead { padding: 12px 14px 10px 16px; border-bottom: 1.5px solid var(--sunk); display: flex; flex-direction: column; gap: 10px; }
+.hhead .tools { padding: 0; border: none; flex-wrap: wrap; }
+.ev .m .st { color: var(--chg); }
+/* 履歴の選択 */
+#app.hsel .rule::before { background: none; }
+#app.hsel .rule .guard { border-bottom: 2px solid var(--line); color: var(--ink); text-decoration: none; }
+#app.hsel .rule .guard::after { border-left-color: var(--line); }
+#app.hsel .rule .t { text-decoration: none; opacity: 1; }
+.rule.off, .cluster.off { display: none !important; }
+#app.hsel .rule.later .t, #app.hsel .rule.later .mc, #app.hsel .rule.err.later .gt { opacity: .55; }
+.hlt { color: var(--muted); font-size: 13px; }
+.ctitle { padding: 12px 6px 4px; font-size: 13px; font-weight: 700; line-height: 1.6; }
+.ctitle code { font: 500 .93em var(--mono); }
+.hloc { padding: 6px 6px 2px; }
+.ev.cur { background: var(--sunk); border-color: var(--ink); }
+#world.picking .rule:not(.pick) { opacity: .3; }
+[hidden] { display: none !important; }
+#keys {
+  left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20; padding: 18px 22px; border-radius: 16px;
+  display: grid; grid-template-columns: auto auto; gap: 8px 18px; align-items: center;
+  font-size: 12.5px; cursor: pointer; max-height: calc(100% - 40px); overflow: auto;
+}
+#keys .ks { display: flex; gap: 4px; justify-content: flex-end; }
+kbd {
+  font: 600 11px/1 var(--mono); padding: 4px 7px; border-radius: 6px; border: 1.5px solid var(--ink);
+  background: var(--panel); box-shadow: 0 2px 0 var(--ink); white-space: nowrap;
+}
+#time {
+  left: calc(264px + env(safe-area-inset-left, 0px)); right: calc(var(--dw) + 218px);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px)); height: 40px; border-radius: 11px;
+  display: flex; align-items: center; gap: 10px; padding: 0 12px 0 6px; transition: right .28s;
+}
+#app.closed #time { right: 206px; }
+#play {
+  flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--ink);
+  background: var(--state); color: var(--state-ink); cursor: pointer; font-size: 11px; padding: 0;
+}
+#scrub { flex: 1; min-width: 40px; accent-color: var(--state); cursor: pointer; }
+#tver { flex: none; font: 600 12px/1 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 760px) {
+  #time, #app.closed #time { left: 12px; right: 12px; bottom: auto; top: calc(96px + env(safe-area-inset-top, 0px)); }
+}
+#app.hsel .rule.hk-a::before { background: var(--add-bg); }
+#app.hsel .rule.hk-c::before { background: var(--chg-bg); }
+#app.hsel .rule.hk-d::before { background: var(--del-bg); }
+#app.hsel .rule.hk-a .guard { border-bottom-color: var(--add); } #app.hsel .rule.hk-a .guard::after { border-left-color: var(--add); }
+#app.hsel .rule.hk-c .guard { border-bottom-color: var(--chg); } #app.hsel .rule.hk-c .guard::after { border-left-color: var(--chg); }
+#app.hsel .rule.hk-d .guard { border-bottom: 2px dashed var(--del); color: var(--muted); text-decoration: line-through; }
+#app.hsel .rule.hk-d .guard::after { border-left-color: var(--del); }
+#app.hsel .rule.hk-d .t { text-decoration: line-through; opacity: .6; }
+#app.hsel .rule.err.hk-d .gt { text-decoration: line-through; color: var(--muted); }
+#app.hsel .rule.ce.hk-d .cv .mc { text-decoration: line-through; opacity: .6; }
+.hmk { display: inline-grid; vertical-align: middle; }
+.rule.err .hlt { margin-right: 4px; }
+.rule.err .hmk { margin-left: 6px; }
+.rule.hk-a .hmk { background: var(--add); } .rule.hk-c .hmk { background: var(--chg); } .rule.hk-d .hmk { background: var(--del); }
+#app.hsel.nodiff .rule.hk-d { display: none !important; }
+#app.hsel.nodiff .rule::before { background: none; border-color: transparent; animation: none; }
+#app.hsel.nodiff .rule .guard { border-bottom: 2px solid var(--line); }
+#app.hsel.nodiff .rule .guard::after { border-left-color: var(--line); }
+#spark { display: block; width: 100%; height: auto; overflow: visible; }
+#spark .bk { fill: var(--line); opacity: .45; }
+#spark .bs { fill: var(--state); stroke: var(--ink); stroke-width: .6; }
+#spark .hit { fill: transparent; cursor: pointer; }
+#spark .hit:hover { fill: var(--shade); }
+#spark .ls { fill: none; stroke: var(--skill-ink); stroke-width: 1.6; }
+#spark .lp { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 3 2; }
+#spark text { font: 600 9px var(--mono); fill: var(--muted); }
+#spark text.ts { fill: var(--skill-ink); } #spark text.tp { fill: var(--ink); }
+#q {
+  flex: 1 0 100%; order: -1; min-width: 0; height: 36px; border-radius: 9px; border: 1.5px solid var(--line);
+  background: var(--panel); color: var(--ink); padding: 0 10px; font: inherit; font-size: 12px;
+}
+#q:focus-visible { outline: 2px solid var(--state); outline-offset: 2px; }
+.hhead .tools > .seg:last-child { margin-left: auto; }
+.ev.kcur { outline: 2px solid var(--state); outline-offset: -2px; }
+#tl { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 10px 14px; scrollbar-width: thin; }
+#tl h2 {
+  position: sticky; top: 0; z-index: 2; margin: 0; padding: 12px 6px 6px;
+  background: linear-gradient(var(--panel) 70%, transparent);
+  font: 700 11px/1.5 var(--mono); color: var(--muted); display: flex; justify-content: space-between;
+}
+.ev { display: grid; grid-template-columns: 14px 1fr; gap: 0 8px; padding: 7px 8px; border-radius: 10px; scroll-margin-top: 36px; border: 1.5px solid transparent; }
+.ev::before { content: ""; grid-column: 1; grid-row: 1; width: 8px; height: 8px; border-radius: 50%; margin: 5px 0 0 3px; background: var(--line); }
+.ev > * { grid-column: 2; min-width: 0; }
+.ev.sk { cursor: pointer; }
+.ev.sk::before { background: var(--state); box-shadow: 0 0 0 1.5px var(--ink); }
+.ev.sk:hover { background: var(--sunk); }
+.ev.bump { opacity: .55; }
+.ev .m { display: flex; gap: 7px; align-items: center; font: 500 11px/1.6 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ev .m .v { background: var(--state); color: var(--state-ink); padding: 0 6px; border-radius: 5px; font-weight: 600; }
+.ev .m .nc { background: var(--ink); color: var(--bg); padding: 0 6px; border-radius: 5px; font-weight: 600; }
+.ev .m a { margin-left: auto; color: var(--muted); text-underline-offset: 3px; }
+.sz { display: flex; gap: 1px; align-items: center; }
+.sz i { display: block; height: 6px; border-radius: 2px; }
+.sz .p { background: var(--add); } .sz .n { background: var(--del); }
+.ev .ti code { font: 500 .93em var(--mono); }
+.ev .ti { font-size: 12.5px; line-height: 1.55; font-weight: 500; text-wrap: pretty; }
+.ev.sk .ti { font-weight: 700; }
+.ev .tg { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 4px; }
+.ev .tg .t { font-size: 10.5px; padding: 1px 8px; }
+.ev .tg .t.gone { text-decoration: line-through; opacity: .6; }
+@media (max-width: 760px) { .tabs { padding-right: 62px; } }
+
+/* 状態への遷移 */
+#wires { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+#wires .wire { fill: none; stroke: var(--line); stroke-width: 2; }
+#wires .ah { fill: var(--line); }
+#wires .wire.hot { stroke: var(--ink); stroke-width: 2.5; }
+#wires .ah.hot { fill: var(--ink); }
+#wires .lv-should { stroke-dasharray: 7 5; }
+#wires .lv-may { stroke-dasharray: .5 5; stroke-linecap: round; }
+#wires .lv-deferred { opacity: .4; }
+#world.picking #wires > :not(.hot) { opacity: .2; }
+.region.explicit { gap: 140px; }
+.region.flow.explicit .rules { margin-right: 0; }
+.t.go {
+  background: var(--state); color: var(--state-ink); border: 1.5px solid var(--ink); border-radius: 8px;
+  padding: 2px 10px; font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: 0 2px 0 var(--ink);
+}
+@media (prefers-reduced-motion: no-preference) { .state.ping { animation: sping 1.1s ease-out 2; } }
+@keyframes sping { 0% { outline: 3px solid var(--ink); outline-offset: 0; } 100% { outline: 3px solid transparent; outline-offset: 18px; } }
+
+/* エラー・不可の折り畳み */
+.efold { margin-left: 14px; }
+.eh {
+  display: inline-flex; align-items: center; gap: 8px; padding: 3px 5px 3px 9px; border-radius: 8px;
+  border: 1.5px solid var(--stop); background: var(--panel); color: var(--stop); font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.eh::before { content: "▸"; font-size: 10px; transition: transform .2s; }
+.efold.open .eh::before, .efold.auto .eh::before { transform: rotate(90deg); }
+.eh b { font: 600 11px/1 var(--mono); padding: 3px 6px; border-radius: 5px; background: var(--stop); color: var(--stop-ink); }
+.ebody { display: flex; flex-direction: column; gap: 16px; padding-top: 14px; }
+.efold:not(.open):not(.auto) .ebody { display: none; }
+.eg { display: grid; grid-template-columns: 238px auto; align-items: center; }
+.eg.gone { display: none; }
+.egs { display: flex; flex-direction: column; gap: 6px; padding: 2px 16px 2px 0; border-right: 2px solid var(--line); }
+.eg > .tos { transform: none; padding-left: 0; }
+.ar { flex: none; position: relative; width: 24px; height: 2px; margin-left: -7px; background: var(--line); }
+.ar::after { content: ""; position: absolute; right: -1px; top: -4px; border-left: 8px solid var(--line); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+.rule.err { display: block; font-size: 13px; line-height: 1.5; }
+.rule.err::before { inset: -3px -8px -3px -6px; }
+#world.picking .eg:not(.gp) > .tos { opacity: .3; }
+
+/* 枝の属性 */
+.rule.vx { display: none !important; }
+.rule.lv-should .guard { border-bottom-style: dashed !important; }
+.rule.lv-may .guard { border-bottom-style: dotted !important; }
+.rule.err.lv-should .gt, .rule.ce.lv-should .cv { border-bottom: 2px dashed var(--line); }
+.rule.err.lv-may .gt, .rule.ce.lv-may .cv { border-bottom: 2px dotted var(--line); }
+.rule.lv-deferred .guard, .rule.lv-deferred .tos, .rule.err.lv-deferred, .rule.ce.lv-deferred { opacity: .45; }
+.gt.inf { text-decoration: underline dotted var(--chg); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.lvm { font: italic 700 12px/1 var(--mono); color: var(--chg); margin-left: 6px; }
+.std {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 6px; border-radius: 50%;
+  border: 1.5px solid; font: 700 10px/1 var(--mono); font-style: normal; vertical-align: -2px;
+}
+.std.eq { color: var(--add); } .std.strict { color: var(--chg); } .std.dev { color: var(--del); }
+.why {
+  margin-left: 6px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted);
+  font: 500 10.5px/1.5 var(--mono); white-space: nowrap; vertical-align: 1px;
+}
+.ism { display: inline-block; width: 9px; height: 9px; margin: 0 2px 0 7px; transform: rotate(45deg); border-radius: 2px; background: var(--line); cursor: pointer; }
+.ism.conflict { background: var(--stop); } .ism.gap { background: var(--chg); } .ism.ambiguous { background: var(--prin-ink); }
+.vds { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: 1px; }
+.vds i, #vars i { width: 8px; height: 8px; border-radius: 50%; background: var(--vc); }
+#app.vsel .vds { display: none; }
+
+/* 判定表 */
+.tblw { margin-left: 14px; }
+.dt { border-collapse: collapse; font-size: 12.5px; line-height: 1.45; background: var(--panel); }
+.dt th, .dt td { border: 1.5px solid var(--line); padding: 6px 10px; vertical-align: middle; text-align: left; }
+.dt th { background: var(--sunk); font-weight: 500; }
+.dt thead th { font-weight: 700; white-space: nowrap; }
+.dt .ax { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
+.dt .ax:first-child { text-align: right; }
+.cv.inf { text-decoration: underline dotted var(--chg); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.rule.ce { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.rule.ce + .rule.ce { margin-top: 8px; }
+.rule.ce::before { inset: -4px -7px; }
+.rule.ce .cv { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dt .na { color: var(--muted); justify-content: center; }
+.dt .und { color: var(--chg); font-weight: 700; }
+.dt td.u { background: var(--chg-bg); }
+.vna { display: none; color: var(--muted); }
+td.void > .vna { display: inline; }
+
+/* 用途 */
+#vars { pointer-events: auto; align-self: flex-start; }
+#vars button { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); }
+#vars button[aria-pressed="true"] { background: var(--ink); }
+
+/* 原文・指摘 */
+#drawer:not([data-tab="now"]) > header, #drawer:not([data-tab="now"]) > .tools, #drawer:not([data-tab="now"]) > #list { display: none; }
+#drawer:not([data-tab="all"]) > #hist { display: none; }
+#drawer:not([data-tab="src"]) > #srcl { display: none; }
+#drawer:not([data-tab="iss"]) > #issl { display: none; }
+.pane { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 10px 14px; scrollbar-width: thin; }
+.pane h2 {
+  position: sticky; top: 0; z-index: 2; margin: 0; padding: 12px 6px 6px;
+  background: linear-gradient(var(--panel) 70%, transparent);
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--muted); display: flex; justify-content: space-between;
+}
+.pane h2 span { font-family: var(--mono); letter-spacing: 0; }
+.sec, .isc { padding: 8px 8px 8px calc(8px + var(--ind, 0px)); border-radius: 12px; border: 1.5px solid transparent; cursor: pointer; scroll-margin-top: 36px; }
+.sec:hover, .isc:hover { background: var(--sunk); }
+.sec.on, .isc.on { background: var(--sunk); border-color: var(--ink); }
+.sec .r1, .isc .r1 { display: flex; align-items: flex-start; gap: 8px; }
+.sec h3, .isc h3 { flex: 1; min-width: 0; margin: 0; font-size: 13px; font-weight: 700; line-height: 1.55; text-wrap: pretty; }
+.sec h3 a { color: inherit; text-decoration: none; }
+.sec h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.isc h3 code, .isc .body code { font: 500 .93em var(--mono); }
+.sec .n, .isc .n { flex: none; margin-top: 2px; font: 600 11px/1.5 var(--mono); color: var(--muted); }
+.sec.skip { opacity: .5; }
+.sec.head { cursor: default; padding-top: 12px; padding-bottom: 2px; }
+.sec.head:hover { background: none; }
+.sec.head h3 { color: var(--muted); font-size: 12px; }
+.sec.on .detail, .isc.on .detail { display: flex; flex-direction: column; gap: 8px; }
+.pane .body { margin: 0; font-size: 12.5px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+.isc .r1 .ism { flex: none; margin: 6px 2px 0 3px; }
+.srcs { display: flex; flex-wrap: wrap; gap: 4px; }
+.srcs button {
+  padding: 1px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
+  font-size: 11px; cursor: pointer; text-align: left;
+}
+.srcs button:hover { border-color: var(--ink); }
+
+/* 凡例の符号 */
+.lg {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 6px; font-size: 11px; color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+}
+.lg .sw { width: 22px; border-top: 2px solid var(--line); }
+.lg .sw.should { border-top-style: dashed; } .lg .sw.may { border-top-style: dotted; } .lg .sw.deferred { opacity: .4; }
+.lg .ism, .lg .std, .lg .lvm { margin: 0; cursor: default; }
+.lg .inf { color: var(--ink); text-decoration: underline dotted var(--chg); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.lg .und { color: var(--chg); background: var(--chg-bg); padding: 0 4px; border-radius: 3px; font-weight: 700; }
+
+@media (max-width: 760px) {
+  #drawer { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 60%; }
+  #app.closed #drawer { transform: translateY(calc(100% - 62px)); }
+  #dtoggle { left: auto; right: 12px; top: 11px; box-shadow: none; }
+  #dtoggle::before { content: "⌄"; } #app.closed #dtoggle::before { content: "⌃"; }
+  #drawer header { padding-right: 62px; }
+  .nav { display: none; }
+  #mini { display: none; }
+  #zoom, #app.closed #zoom { right: 12px; bottom: auto; top: calc(14px + env(safe-area-inset-top, 0px)); }
+  #legend { max-width: calc(100vw - 170px); }
+  #vars { max-width: calc(100vw - 170px); overflow-x: auto; scrollbar-width: none; }
+}
+</style>
+</head>
+<body>
+<div id="app" class="hsel">
+  <div id="stage">
+    <div id="world"><svg id="wires" aria-hidden="true"></svg><div class="machine"><div class="name" id="mname"></div><div class="region flow" id="flow"></div><div class="region any" id="any"><div class="tag" id="anytag"></div></div></div></div>
+  </div>
+
+  <div class="hud" id="brand">
+    <div class="id glass"><b id="bname"></b><span id="bver"></span></div>
+    <div class="seg" id="vars" hidden></div>
+    <div id="legend"></div>
+  </div>
+
+  <canvas class="hud glass" id="mini" aria-label="全体図"></canvas>
+
+  <div class="hud" id="zoom">
+    <button class="btn glass" id="zout" type="button" aria-label="縮小">−</button>
+    <button class="btn glass" id="zin" type="button" aria-label="拡大">＋</button>
+    <button class="btn glass" id="zfit" type="button" aria-label="全体を表示">⤢</button>
+    <button class="btn glass" id="khelp" type="button" aria-label="キー操作の一覧">?</button>
+  </div>
+
+  <div class="hud glass" id="time">
+    <button id="play" type="button" aria-label="初版から再生">▶</button>
+    <input id="scrub" type="range" min="0" max="0" value="0" step="1" aria-label="表示する時点">
+    <output id="tver"></output>
+  </div>
+
+  <div class="hud glass" id="keys" hidden></div>
+
+  <aside class="hud glass" id="drawer" data-tab="now" aria-label="パネル">
+    <button class="glass" id="dtoggle" type="button" aria-label="パネルを開閉"><span class="dot" id="left"></span></button>
+    <div class="seg tabs" id="tabs"><button type="button" data-tab="now" aria-pressed="true">更新<b id="tabver"></b></button><button type="button" data-tab="all" aria-pressed="false">全履歴<b id="tabn"></b></button><button type="button" data-tab="src" aria-pressed="false">原文<b id="tabsrc"></b></button><button type="button" data-tab="iss" aria-pressed="false">指摘<b id="tabiss"></b></button></div>
+    <header>
+      <svg id="ring" width="42" height="42" viewBox="0 0 42 42" aria-hidden="true"><circle class="bg" cx="21" cy="21" r="17"/><circle class="fg" id="arc" cx="21" cy="21" r="17"/></svg>
+      <div class="count"><b id="done">0</b> / <span id="total">0</span></div>
+      <div class="ver" id="ver"></div>
+      <div class="nav"><button id="prev" type="button" aria-label="前の更新">‹</button><button id="next" type="button" aria-label="次の更新">›</button></div>
+    </header>
+    <div class="tools">
+      <div class="seg" id="segdiff"><button type="button" data-v="diff" aria-pressed="true">差分</button><button type="button" data-v="now" aria-pressed="false">最新</button></div>
+      <div class="seg"><button type="button" id="todo" aria-pressed="false">未確認</button></div>
+    </div>
+    <div id="list"></div>
+    <section id="hist">
+      <div class="hhead">
+        <svg id="spark" viewBox="0 0 352 80" role="img" aria-label="週ごとのコミット数の推移"></svg>
+        <div class="tools">
+          <div class="seg" id="segh"><button type="button" data-v="star" aria-pressed="true">★ 注目</button><button type="button" data-v="sk" aria-pressed="false" id="fbtn"></button><button type="button" data-v="all" aria-pressed="false">すべて</button></div>
+          <input id="q" type="search" placeholder="検索" aria-label="履歴を検索">
+          <div class="seg"><button type="button" id="ord" aria-label="並び順を切り替え">⇅ 新しい順</button></div>
+        </div>
+      </div>
+      <div id="tl"></div>
+    </section>
+    <div class="pane" id="srcl"></div>
+    <div class="pane" id="issl"></div>
+  </aside>
+</div>
+
+<script>
+const D = {"meta":{"title":"Potetoモード状態機械","slug":"poteto-state-machine","name":"poteto-mode","brand":"pstack","source":{"title":"poteto-mode SKILL.md","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md"},"repoUrl":"https://github.com/cursor/plugins","file":"pstack/skills/poteto-mode/SKILL.md","fileLabel":"SKILL.md","anyLabel":"随時","areas":["起動条件","原則","自律実行","サブエージェント","返答","プレイブック","その他","対象ファイルの外"],"legend":[["skill","スキル"],["prin","原則"],["pb","プレイブック"],["act","動作"],["stop","停止"],["m","値"]],"series":[{"k":["skill","prin"],"start":29},{"k":"pb","start":12}],"extract":"curl -sS https://raw.githubusercontent.com/cursor/plugins/2f87c854fe/pstack/skills/poteto-mode/SKILL.md -o \u003c原文>\nnode scripts/extract-md.mjs \u003c原文> --items --arrows --tab SKILL.md --url https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md"},"machine":{"flow":[{"state":"/poteto-mode","code":true,"rules":[{"g":"プレイブックの実行","to":[["act","/poteto-mode を受けたチャット自身が実行"]],"src":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn","h":"2bd5dd4f22:a0 2f87c854fe:c13"},{"g":"poteto-agent向けのプロンプト","to":[["act","poteto-mode/SKILL.md の絶対パスを記載"]],"src":"poteto-mode","h":"364a77eb35:a0"},{"g":"原則を適用","to":[["act","個別のSKILL.md（principle-\u003ctitle>）を通読"]],"src":"poteto-mode/principles","h":"24bd6eb895:a3"},{"g":"原則を引用","to":[["act","このセッションで個別のSKILL.mdを読んだ原則に限定"]],"src":"poteto-mode/non-negotiables","h":"24bd6eb895:a1 e8d856f027:c1"},{"g":"新しいタスクがプレイブックに該当／厳密さが必要","to":[["act","/poteto-mode を適用（常駐モードのリマインダー）"]],"h":"0dda29e839:a1 b93e811788:d0"}]},{"state":"最初のメッセージ","rules":[{"g":"最初のメッセージ","to":[["act","ユーザーの目的と、それを満たす最小の変更を再掲"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0 2f87c854fe:c0"},{"g":"最初のメッセージで目的と最小の変更を再掲した後","to":[["act","そのまま進行"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0"},{"g":"依頼された変更を証拠が否定","to":[["act","証拠を提示"],["stop","停止"]],"h":"ab1f702ce8:a0 2f87c854fe:d0"}]},{"state":"依頼を分類","rules":[{"g":"大規模・横断的・不在中の作業／該当するプレイブックなし","to":[["skill","figure-it-out"]],"src":"poteto-mode/playbooks","issue":"i9","h":"35f33923cd:a1 2f87c854fe:c24"},{"g":"複数日・多数のPRスタック・サブエージェント群を1コーディネーターが統括","to":[["pb","Orchestrate","統括"]],"src":"poteto-mode/playbooks","h":"99559f2f52:a3 2f87c854fe:d23"},{"g":"1エージェントがセッション予算内で完了可能（大規模に聞こえる場合を含む）","to":[["pb","Autonomous run","自律実行"]],"inferred":"原文はこの規定を「Orchestrate」の項目に Orchestrate との区別として記載し、プログラム規模の表現を含まない依頼への適用を明記していない","h":"99559f2f52:a6 2f87c854fe:d23"},{"g":"タスクが Investigation に該当","to":[["pb","Investigation","調査"]],"src":"poteto-mode/playbooks","issue":"i9","h":"24bd6eb895:a8 2f87c854fe:c22","gap":true},{"g":"タスクが Runtime forensics に該当","to":[["pb","Runtime forensics","実行時の原因調査"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"タスクが Trace forensics に該当","to":[["pb","Trace forensics","トレースの原因調査"]],"src":"poteto-mode/playbooks","h":"bbc0d75eb2:a0 2f87c854fe:c22"},{"g":"タスクが Bug fix に該当","to":[["pb","Bug fix","バグ修正"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22","gap":true},{"g":"タスクが Perf issue に該当","to":[["pb","Perf issue","性能の問題"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"タスクが Hillclimb に該当","to":[["pb","Hillclimb","山登り法"]],"src":"poteto-mode/playbooks","h":"b64f02a456:a0 2f87c854fe:c22"},{"g":"タスクが Feature に該当","to":[["pb","Feature","機能"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"タスクが Refactoring に該当","to":[["pb","Refactoring","リファクタリング"]],"src":"poteto-mode/playbooks","h":"f18ffc1bd6:a0 2f87c854fe:c22"},{"g":"タスクが Prototype に該当","to":[["pb","Prototype","試作"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 318e8f74cc:c1 2f87c854fe:c22"},{"g":"タスクが Visual parity に該当","to":[["pb","Visual parity","見た目の一致"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"タスクが Authoring a skill に該当","to":[["pb","Authoring a skill","スキルの作成"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"タスクが Eval に該当","to":[["pb","Eval","評価"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"タスクが Autonomous run に該当","to":[["pb","Autonomous run","自律実行"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22","gap":true},{"g":"タスクが Autopilot-full に該当","to":[["pb","Autopilot-full","完全な自動操縦"]],"src":"poteto-mode/playbooks","h":"b047069f4f:a2 70b2dc8b4b:c3 2f87c854fe:c22"},{"g":"タスクが Autopilot-stack に該当","to":[["pb","Autopilot-stack","スタックの自動操縦"]],"src":"poteto-mode/playbooks","h":"b047069f4f:a3 23a56e2dac:c3 ab1f702ce8:c4 2f87c854fe:c22"},{"g":"タスクが Multi-phase plan に該当","to":[["pb","Multi-phase plan","複数フェーズの計画"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"タスクが Session pickup に該当","to":[["pb","Session pickup","セッションの引き継ぎ"]],"src":"poteto-mode/playbooks","h":"bbc0d75eb2:a1 2f87c854fe:c22","gap":true},{"g":"タスクが Pause safely に該当","to":[["pb","Pause safely","安全な一時停止"]],"src":"poteto-mode/playbooks","h":"2f3a47e6c4:a0 2f87c854fe:c22"},{"g":"タスクが Worktree cleanup に該当","to":[["pb","Worktree cleanup","worktreeの整理"]],"src":"poteto-mode/playbooks","h":"99559f2f52:a7 2f87c854fe:c22"}]},{"state":"ToDoを作成","rules":[{"g":"タスクに該当するプレイブックを選択","to":[["act","playbooks/\u003ctitle>.md（title は kebab case）の手順を開く"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8","issue":"i9"},{"g":"タスクに該当するプレイブックを選択","to":[["act","手順を最初に todolist ツールへ複写"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 e8d856f027:c5 2f87c854fe:c24"},{"g":"プレイブックの手順を実施しない","to":[["act","skip: \u003creason> を添えて ToDo に残す"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:d25"},{"g":"複数段階のタスクを開始","to":[["act","「Principles 節を全文読む」を ToDo の先頭に配置"]],"h":"24bd6eb895:a1 e8d856f027:d0"}]},{"state":"設計","rules":[{"g":"単純ではない変更／アーキテクチャの判断／「本当に大丈夫か」","to":[["skill","how"]],"h":"24bd6eb895:a2 bf0c7cd80a:d0"},{"g":"関数の境界をまたぐコード","to":[["skill","architect"]],"src":"poteto-mode/non-negotiables/code","h":"24bd6eb895:a2 2f87c854fe:c3"},{"g":"ロジックを書く前","to":[["prin","土台から考える","principle-foundational-thinking"]],"src":"poteto-mode/principles/foundational-thinking","h":"24bd6eb895:a3"},{"g":"前例のない操作・アーキテクチャ判断","to":[["prin","設計の選択肢を検討し尽くす","principle-exhaust-the-design-space"],["act","試作を2〜3案"]],"src":"poteto-mode/principles/exhaust-the-design-space","h":"24bd6eb895:a3"},{"g":"既存設計に新要件を統合","to":[["prin","第一原理から再設計する","principle-redesign-from-first-principles"]],"src":"poteto-mode/principles/redesign-from-first-principles","h":"24bd6eb895:a3"},{"g":"製品・UX・機能範囲のトレードオフ","to":[["prin","体験を優先する","principle-experience-first"]],"src":"poteto-mode/principles/experience-first","h":"24bd6eb895:a3"},{"g":"単純ではない複数段階の作業","to":[["act","スループットの確認項目を記述（Feature ステップ3）"]],"h":"24bd6eb895:a2 2f87c854fe:d4"},{"g":"設計に異論がある","to":[["skill","interrogate"]],"src":"poteto-mode/non-negotiables/code","h":"24bd6eb895:a2 3fe2823ce1:c1 2f87c854fe:c3"}]},{"state":"実装","rules":[{"g":"コードを書く","to":[["act","最初にデータの形を明示"]],"src":"poteto-mode/non-negotiables/code","h":"24bd6eb895:a2 a8145426e5:c0 3fe2823ce1:c0 2f87c854fe:c3"},{"g":"状態を持つロジック・分岐の多いコード・形の前提を複数ファイルで反復するコード","to":[["prin","ドメインをモデル化する","principle-model-the-domain"]],"src":"poteto-mode/principles/model-the-domain","h":"a8145426e5:a0"},{"g":"差分の規模を決定／抽象化・層を追加したくなる","to":[["prin","怠惰の原則","principle-laziness-protocol"]],"src":"poteto-mode/principles/laziness-protocol","h":"24bd6eb895:a3"},{"g":"追加・リファクタリング・書き換えの順序を決定","to":[["prin","追加の前に削る","principle-subtract-before-you-add"]],"src":"poteto-mode/principles/subtract-before-you-add","h":"24bd6eb895:a3"},{"g":"単純ではない作業","to":[["prin","作業を支える道具を作る","principle-build-the-lever"]],"src":"poteto-mode/principles/build-the-lever","h":"7b1c32e4c3:a0 ba7781cce6:c0"},{"g":"計画された、フェーズ境界が明確な書き換え・移行","to":[["prin","到達点を基準に実行する","principle-outcome-oriented-execution"]],"src":"poteto-mode/principles/outcome-oriented-execution","h":"24bd6eb895:a3"},{"g":"追跡しづらいコードのレビュー・構成変更","to":[["prin","読み手の負荷を減らす","principle-minimize-reader-load"]],"src":"poteto-mode/principles/minimize-reader-load","h":"24bd6eb895:a3"},{"g":"検証・エラー処理・フレームワークのアダプターを接続","to":[["prin","境界を守る","principle-boundary-discipline"]],"src":"poteto-mode/principles/boundary-discipline","h":"24bd6eb895:a3","gap":true},{"g":"型のある言語で型・シグネチャを設計","to":[["prin","型システムを活用する","principle-type-system-discipline"]],"src":"poteto-mode/principles/type-system-discipline","h":"24bd6eb895:a3"},{"g":"クラッシュ・再試行が起こるコマンド・ループ","to":[["prin","操作を冪等にする","principle-make-operations-idempotent"]],"src":"poteto-mode/principles/make-operations-idempotent","h":"24bd6eb895:a3"},{"g":"旧呼び出し元が残る状態で新しい内部APIを導入","to":[["prin","呼び出し元を移行して旧APIを削除する","principle-migrate-callers-then-delete-legacy-apis"]],"src":"poteto-mode/principles/migrate-callers-then-delete-legacy-apis","h":"24bd6eb895:a3"},{"g":"並行する複数の主体が同じファイル・ブランチ・キー・オブジェクトへ書き込む可能性がある","to":[["prin","共有状態を直列化する前に分離する","principle-separate-before-serializing-shared-state"]],"src":"poteto-mode/principles/separate-before-serializing-shared-state","h":"24bd6eb895:a3"},{"g":"UI・IDE・CLI を出荷","to":[["skill","control-ui または control-cli","cursor-team-kit"]],"src":"poteto-mode/non-negotiables/shipping-ui-ide-cli","issue":"i8","h":"24bd6eb895:a2 2f87c854fe:c6","gap":true},{"g":"ブラウザ・Electron・Web UIを提供","to":[["skill","control-ui"]],"src":"poteto-mode/non-negotiables/shipping-ui-ide-cli","h":"24bd6eb895:a2 2f87c854fe:d6"},{"g":"コメントを書く","to":[["act","コードで示せない自明でない理由に限定"]],"h":"24bd6eb895:a7 2f87c854fe:d21"}]},{"state":"検証","rules":[{"g":"UI・IDE・CLI の出荷でのバグ修正","to":[["act","まず自分で同じ操作面から再現"]],"src":"poteto-mode/non-negotiables/shipping-ui-ide-cli","h":"24bd6eb895:a9 2f87c854fe:d6"},{"g":"デバッグ","to":[["prin","根本原因を直す","principle-fix-root-causes"]],"src":"poteto-mode/principles/fix-root-causes","h":"24bd6eb895:a3 e5136d8241:c1"},{"g":"同じ前提の修正が2回以上、同じ確認に失敗","to":[["prin","前提を疑う","principle-attack-the-premise"]],"src":"poteto-mode/principles/attack-the-premise","h":"e8d856f027:a2 e5136d8241:c0"},{"g":"テストを追加・変更・維持","to":[["prin","実装ではなく振る舞いをテストする","principle-test-behavior-not-implementation"]],"src":"poteto-mode/principles/test-behavior-not-implementation","h":"e8d856f027:a3 e5136d8241:c2"},{"g":"複数段階の作業・移行・コミットやPRの積み重ね","to":[["prin","検証可能な単位を順に進める","principle-sequence-verifiable-units"]],"src":"poteto-mode/principles/sequence-work-into-verifiable-units","h":"27daaa3091:a0"},{"g":"自分で測定した数値","to":[["skill","benchmark-checklist"]],"src":"poteto-mode/non-negotiables/a-number-you-measured","h":"23e4138daa:a1 2f87c854fe:c7"},{"g":"測定の前／測定値を信頼・報告・利用する前","to":[["prin","数値を説明する","principle-explain-the-number"]],"src":"poteto-mode/principles/explain-the-number","h":"23e4138daa:a2 ab1f702ce8:c1"},{"g":"完了を宣言する前","to":[["prin","動くことを証明する","principle-prove-it-works"]],"src":"poteto-mode/principles/prove-it-works","h":"24bd6eb895:a3"}]},{"state":"コミット前","rules":[{"g":"コミットの前","to":[["skill","/deslop","cursor-team-kit"]],"src":"poteto-mode/non-negotiables/before-commit","h":"24bd6eb895:a2"},{"g":"コミットメッセージを書く","to":[["skill","technical-writing"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"b047069f4f:a0"}]},{"state":"レビュー前","rules":[{"g":"レビューに出す前","to":[["skill","no-comments"]],"src":"poteto-mode/non-negotiables/before-commit","h":"b047069f4f:a1"}]},{"state":"PRを作成","rules":[{"g":"タスクが Opening a PR に該当","to":[["pb","Opening a PR","PRの作成"]],"src":"poteto-mode/playbooks","h":"24bd6eb895:a8 2f87c854fe:c22"},{"g":"PR説明を書く","to":[["skill","technical-writing"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"b047069f4f:a0"},{"g":"PRの ## Why を書く","to":[["act","ユーザーの目的から開始"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0"}]},{"state":"PRを仕上げる","rules":[{"g":"PRの状況","to":[["pb","Babysit","見守り"]],"src":"poteto-mode/non-negotiables/pr-status poteto-mode/playbooks","h":"99559f2f52:a0 2f87c854fe:c8"},{"g":"PRを開いただけ","to":[["act","Babysit を起動しない"]],"h":"99559f2f52:a0 2f87c854fe:d8"},{"g":"PRを開いた後","to":[["skill","babysit","Cursor 組み込みのスキル"]],"h":"24bd6eb895:a2 99559f2f52:d0"},{"g":"Babysit のポーリングの前","to":[["act","Babysit のモードを宣言"]],"h":"99559f2f52:a0 2f87c854fe:d8"},{"g":"Cursor 組み込みの babysit スキル","to":[["stop","使用しない"]],"src":"poteto-mode/non-negotiables/pr-status","h":"99559f2f52:a0"},{"g":"フェーズ担当エージェントの内部","to":[["stop","drive を使用しない"]],"inferred":"原文は、フェーズ担当エージェントの内部で drive を使用するとそのエージェントのターンの完了が不可能になると記載し、使用の禁止を明記していない","h":"99559f2f52:a0 2f87c854fe:d8"},{"g":"ボットのレビューコメント","to":[["act","各コメントを内容で判断"]],"src":"poteto-mode/non-negotiables/bot-review-comments","h":"97d645a601:a0 99559f2f52:c2 2f87c854fe:c9"}]},{"state":"マージ","rules":[{"g":"CI 成功済み（green）のスタックのマージ","to":[["pb","Shipping","出荷"]],"src":"poteto-mode/non-negotiables/pr-status poteto-mode/playbooks","h":"99559f2f52:a1 23a56e2dac:c2 2f87c854fe:c8"},{"g":"各 PR への独立した判定の前","to":[["stop","何も arm しない"]],"h":"99559f2f52:a1 2f87c854fe:d8"},{"g":"スタックの根元から連続して検証済みの範囲","to":[["act","その範囲だけを順にマージ"]],"h":"99559f2f52:a1 2f87c854fe:d8"}]},{"state":"返答","rules":[{"g":"プレイブックを終了","to":[["skill","unslop"],["act","「返答の書き方」の形式"]],"src":"poteto-mode/writing-the-reply","h":"24bd6eb895:a6 2f87c854fe:d20"},{"g":"返答を書く","to":[["act","短い平叙文。長いダッシュと接続のコロンを使用しない"]],"src":"poteto-mode/writing-the-reply","issue":"i11","h":"24bd6eb895:a6"},{"g":"返答を書く","to":[["act","ユーザーにとって変化する点から記載"]],"src":"poteto-mode/writing-the-reply","h":"c532aa167c:a0 2f87c854fe:c20"},{"g":"主張を記載","to":[["act","根拠または確度（実測・推論・推測）を付記"]],"src":"poteto-mode/writing-the-reply","h":"f8abeddd18:a0 2f87c854fe:c20"},{"g":"自分で実行できる確認","to":[["stop","人間に依頼しない"]],"src":"poteto-mode/writing-the-reply","h":"f8abeddd18:a0"},{"g":"リンク・引用を記載","to":[["act","このセッションで作成・読了した成果物に限定"]],"h":"24bd6eb895:a6 2f87c854fe:d20"},{"g":"判断に原則を使用","to":[["act","原則と、それによって変更した選択を提示"]],"src":"poteto-mode/non-negotiables","h":"24bd6eb895:a1"},{"g":"最終報告を書く","to":[["act","ユーザーの目的から開始"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0 2f87c854fe:c0"},{"g":"完全に指定された1行の編集の後","to":[["act","目的の再掲を省略"]],"h":"ab1f702ce8:a0 2f87c854fe:d0"}]}],"any":[{"state":"分岐で質問したくなった","rules":[{"g":"AskQuestion の前","to":[["act","問いの種類を分類"]],"h":"318e8f74cc:a0 2f87c854fe:d2"},{"g":"実行して決着できる分岐","to":[["pb","Prototype","質問せずに試作"]],"src":"poteto-mode/non-negotiables/a-fork-you-could-settle-by-running-something","h":"318e8f74cc:a0 2f87c854fe:c2"},{"g":"出典付きの回答が成果物の読み取り専用 Investigation","to":[["act","試作せず証拠に基づいて回答"]],"h":"318e8f74cc:a0 2f87c854fe:d2"},{"g":"実験で決着できない製品判断・好み","to":[["skill","AskQuestion"]],"h":"318e8f74cc:a0 2f87c854fe:d2"},{"g":"可逆な作業で「Xをすべきか」","to":[["prin","人間待ちで止まらない","principle-never-block-on-the-human"]],"src":"poteto-mode/principles/never-block-on-the-human","h":"24bd6eb895:a3"},{"g":"完全な自律実行の許可範囲内の判断","to":[["act","自分で決定・実行・結果を報告"]],"h":"70b2dc8b4b:a0 2f87c854fe:d2","gap":true},{"g":"完全な自律実行の許可の下で、運用者しか決定できない事項","to":[["act","既定値を適用し、理由と変更の指示方法を報告"]],"h":"70b2dc8b4b:a0 23e4138daa:c0 2f87c854fe:d2"},{"g":"完全な自律実行の許可の下で、運用者が明示した承認条件","to":[["stop","運用者の確認が必要"]],"h":"70b2dc8b4b:a0 2f87c854fe:d2"}]},{"state":"操作の直前","rules":[{"g":"可逆な作業・外部への操作（チームチャット・チケット更新・評価の起動）","to":[["act","確認を求めず実行"]],"src":"poteto-mode/autonomy/just-do-it","issue":"i13","h":"24bd6eb895:a4"},{"g":"共有ブランチへの force-push／デプロイ／データ削除／顧客へのメッセージ","to":[["stop","必ず停止"]],"src":"poteto-mode/autonomy/always-pause","issue":"i4","h":"24bd6eb895:a4"},{"g":"「止まらないで」「寝る」「終わるまで実行して」「完全に自律で」","to":[["act","作業を継続"]],"src":"poteto-mode/autonomy/session-overrides","issue":"i4","h":"24bd6eb895:a4"},{"g":"「すべきか」と質問された／範囲の追加を提案された／方法を示された","to":[["act","自分の判断を回答。拒否・異論を含む"]],"src":"poteto-mode/autonomy/no-is-an-acceptable-answer","h":"24bd6eb895:a4"}]},{"state":"作業を委任","rules":[{"g":"プレイブックのステップ内で直接起動","to":[["act","subagent_type: poteto-agent"]],"src":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn","issue":"i7","h":"24bd6eb895:a5"},{"g":"interrogate・swarm の内部","to":[["act","各スキルが指定する subagent_type"]],"src":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn","issue":"i7","h":"24bd6eb895:a5 91dd7b7119:c0 bf0c7cd80a:c1 2f87c854fe:c13"},{"g":"Task を呼び出す","to":[["act","run_in_background: true・エージェントモード・ファイル参照・役割ごとのモデル明示（Project worker を含む）"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"24bd6eb895:a5 ab1f702ce8:c2 2f87c854fe:c15","issue":"i13"},{"g":"サブエージェントへの指示を書く","to":[["act","ユーザーの目的から開始"]],"src":"poteto-mode/non-negotiables/first-message","h":"ab1f702ce8:a0 2f87c854fe:c0"},{"g":"Task サブエージェント・Project worker を起動","to":[["act","キックオフの1行目を Read \u003cpath>/worker.md before anything else.（\u003cpath> はこのスキルのフォルダの絶対パス）"]],"src":"poteto-mode/non-negotiables/starting-any-agent-whether-a-task-subagent-or","h":"2f87c854fe:a1"},{"g":"起動するエージェントのキックオフの1行目以外","to":[["act","目的とタスクに限定（poteto-agent にはこのファイルの絶対パスを追加）"]],"src":"poteto-mode/non-negotiables/starting-any-agent-whether-a-task-subagent-or","h":"2f87c854fe:a1"},{"g":"並列展開（fan-out）","to":[["skill","swarm"]],"src":"poteto-mode/non-negotiables/code","h":"b79f8ca89e:a0 2f87c854fe:c3","gap":true},{"g":"比較（bakeoff）","to":[["skill","arena"]],"src":"poteto-mode/non-negotiables/code","issue":"i7","h":"b79f8ca89e:a0 2f87c854fe:c3"},{"g":"大量出力・長いファイル・繰り返しの読み込み","to":[["prin","コンテキストを守る","principle-guard-the-context-window"]],"src":"poteto-mode/principles/guard-the-context-window","h":"24bd6eb895:a3"},{"g":"修正・追加対応・再試行・次のキュー項目","to":[["act","元の指示・後の全指示・前任の報告とブランチを含めて新しいサブエージェントへ委任"]],"src":"poteto-mode/subagents/fresh-subagents-by-default","h":"24bd6eb895:a5 23e4138daa:c3","gap":true},{"g":"移動が高コストな既存エージェントの状態（チェックアウト・未コミット変更・実行中のプロセス）が必要","to":[["act","既存エージェントを再開"]],"src":"poteto-mode/subagents/fresh-subagents-by-default","h":"23e4138daa:a3"},{"g":"セカンドオピニオンを求める","to":[["act","別ベンダーのモデルに同じプロンプト"]],"src":"poteto-mode/subagents","h":"24bd6eb895:a5 2f87c854fe:c19"},{"g":"サブエージェントの報告が返った","to":[["act","差分を確認し、自分で要約"]],"src":"poteto-mode/subagents","h":"24bd6eb895:a5"}]},{"state":"モデルを選択","rules":[{"g":"コード・文章・判断","to":[["m","claude-opus-5-5-xhigh-fast"]],"src":"poteto-mode/subagents","issue":"i12","h":"24bd6eb895:a5 ec44aed93c:c0 6605d7adc3:c0 dc2fae6625:c0 e1007b141f:c0 63d938c2e4:c0 23a56e2dac:c0 70b2dc8b4b:c1 df581122cd:c0 bf0c7cd80a:c2 2f87c854fe:c14"},{"g":"コードのプレイブック","to":[["act","そのプレイブックの行（feature, refactoring・bug-fix・perf-issue・hillclimb）を参照"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"12d587dfb2:a0"},{"g":"文章・判断","to":[["act","judgment and prose の行を参照"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"12d587dfb2:a0"},{"g":"横断的な設計・難しい並行処理・繊細なアルゴリズム","to":[["act","hardest tasks"],["m","claude-fable-5-2-max"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"9b80b53498:a0 3fe2823ce1:c2 23a56e2dac:c0 e8d856f027:c4 70b2dc8b4b:c2 df581122cd:c0 bf0c7cd80a:c2 2f87c854fe:d14"},{"g":"単純な機械的変更","to":[["act","swarm workers の行"],["m","claude-opus-5-5-high-fast"]],"src":"poteto-mode/subagents poteto-mode/subagents/defaults-for-every-task-call","issue":"i12","h":"3fe2823ce1:a2 bf0c7cd80a:c2"},{"g":"検証","to":[["act","常に swarm workers のモデル"],["m","claude-opus-5-5-high-fast"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","issue":"i12","h":"ce649c03ac:a1 bf0c7cd80a:c2"},{"g":"レビュー・設計のパネル（各1席）","to":[["m","claude-fable-5-2-high、claude-opus-5-5-high-fast、gemini-4-carbon-high"]],"src":"poteto-mode/subagents","issue":"i12","h":"bf0c7cd80a:a2"},{"g":"パネル以外で、ユーザーがこのタスクに Fable 5.2 を指定","to":[["m","Fable 5.2"],["act","該当した条件を明示"]],"src":"poteto-mode/subagents/fable-52-is-an-exception","h":"2f87c854fe:a16","gap":true},{"g":"パネル以外で、同じ指示での Opus 5.5 xhigh の2回の実行が確認に失敗","to":[["m","Fable 5.2"],["act","該当した条件を明示"]],"src":"poteto-mode/subagents/fable-52-is-an-exception","h":"2f87c854fe:a16"},{"g":"パネル以外で Fable 5.2 を使用する理由が難しさだけ","to":[["stop","Fable 5.2 の条件に該当しない"]],"src":"poteto-mode/subagents/fable-52-is-an-exception","h":"2f87c854fe:a16"},{"g":"ルールに # defaults: 3 の行がない","to":[["act","既存の行を維持し、/setup-pstack の再実行をセッションに1回案内"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"bf0c7cd80a:a3 2f87c854fe:c15","gap":true},{"g":"役割の行が inherit-parent または auto","to":[["act","model を省略し generalPurpose を起動（親モデルで実行）"]],"src":"poteto-mode/subagents/defaults-for-every-task-call","h":"63432f3196:a1 2f87c854fe:c15"},{"g":"役割のモデルを Task に渡す","to":[["act","実在する識別子を model に指定"]],"h":"63432f3196:a0 04166ac891:d0"},{"g":"各役割の開始レベル","to":[["act","/setup-pstack の予算で設定"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 bf0c7cd80a:c4 2f87c854fe:c17","gap":true},{"g":"パネルの席","to":[["act","記載のレベルを維持"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"2f87c854fe:a17"},{"g":"パネル以外の役割で最難関・繊細な仕事","to":[["act","推論レベルを1段階上げる（上限 xhigh）"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:c17"},{"g":"パネル以外の役割で判断の仕事","to":[["act","推論レベルを1段階下げる"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","issue":"i12","h":"ce649c03ac:a1 2f87c854fe:c17"},{"g":"パネル以外の役割で定型作業","to":[["act","推論レベルを2段階以上下げる"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:c17"},{"g":"常に","to":[["act","どの役割も推論レベルの上限は xhigh"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"2f87c854fe:a17"},{"g":"CI・trunkの破損／誰かが結果待ちで停止","to":[["act","fastモード"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:d17"},{"g":"推論レベルを設定","to":[["act","役割の行・既定値のモデル系列を維持"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 bf0c7cd80a:c4 2f87c854fe:c17"},{"g":"Opus 5.5 を使用","to":[["act","常に -fast の識別子"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"2f87c854fe:a17"},{"g":"Gemini の席","to":[["act","上限は gemini-4-carbon-high"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"bf0c7cd80a:a4 2f87c854fe:c17"},{"g":"緊急の Fable 5.2","to":[["act","標準速度でレベルを維持"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"bf0c7cd80a:a4 2f87c854fe:d17"},{"g":"厳密に指定された手順を文字どおり実行する最難関の作業","to":[["act","最強の指示追従モデル"]],"h":"3fe2823ce1:a2 e1007b141f:c1 23a56e2dac:c1 e8d856f027:d4"}]},{"state":"識別子が拒否された","rules":[{"g":"拒否された識別子","to":[["stop","再び指定しない"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3"},{"g":"役割の行・既定値を使用できる","to":[["act","役割の行または既定値を使用"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1 2f87c854fe:c18","inferred":"原文は最初の代替を役割の行または既定値と記載し、その識別子自体が拒否済みの場合を区別していない。拒否された識別子を再び指定しない規定と合わせて、使用できる場合に限ると補完した"},{"g":"役割の行・既定値を使用できず、呼び出し元スキルに代替がある","to":[["act","呼び出し元スキルの代替"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3","inferred":"原文は代替の順序だけを記載し、次の代替へ移行する条件を記載していない。前の代替を使用できない（拒否済み、または存在しない）場合に次の代替へ移行すると補完した"},{"g":"役割の行・既定値と呼び出し元スキルの代替を使用できない","to":[["act","同系列で最も近い有効な識別子"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3 2f87c854fe:c18","inferred":"原文は代替の順序だけを記載し、次の代替へ移行する条件を記載していない。前の代替を使用できない（拒否済み、または存在しない）場合に次の代替へ移行すると補完した"},{"g":"役割の行・既定値、呼び出し元スキルの代替、同系列の有効な識別子をいずれも使用できない","to":[["act","model を省略"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ab1f702ce8:a3 2f87c854fe:c18","inferred":"原文は代替の順序だけを記載し、次の代替へ移行する条件を記載していない。前の代替を使用できない（拒否済み、または存在しない）場合に次の代替へ移行すると補完した"},{"g":"代替の識別子へ変更・model を省略","to":[["act","その旨を報告"]],"src":"poteto-mode/subagents/match-the-model-to-the-job","h":"ce649c03ac:a1"}]},{"state":"文章を書く","rules":[{"g":"文章を書く（ユーザーへの返答を含む）","to":[["skill","unslop"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"24bd6eb895:a2"},{"g":"エージェント向けの文章","to":[["skill","unslop"],["skill","create-skill"]],"h":"24bd6eb895:a2 2f87c854fe:d5"},{"g":"ドキュメント・PR説明・コミットメッセージ","to":[["skill","technical-writing"]],"src":"poteto-mode/non-negotiables/prose-your-reply-included","h":"b047069f4f:a0 2f87c854fe:c5"},{"g":"同じ指示を二度書いている","to":[["prin","教訓を構造に組み込む","principle-encode-lessons-in-structure"],["act","lint・フラグ・スクリプト"]],"src":"poteto-mode/principles/encode-lessons-in-structure","h":"24bd6eb895:a3"}]},{"state":"長時間・不在の作業","rules":[{"g":"長時間・不在中の作業","to":[["skill","show-me-your-work"]],"src":"poteto-mode/non-negotiables/long-or-unattended-work","h":"35f33923cd:a0 2f87c854fe:c11"},{"g":"監査可能な記録が必要な重要度","to":[["act","判断の記録をコミット"]],"h":"35f33923cd:a0 2f87c854fe:d11"},{"g":"監査可能な記録が必要な重要度ではない","to":[["act","判断の記録をローカルに保存"]],"h":"35f33923cd:a0 2f87c854fe:d11"}]},{"state":"壊れたスキルを発見","rules":[{"g":"作業中に壊れたスキルを発見","to":[["act","別PRで修正"],["act","本来の作業を継続"]],"h":"24bd6eb895:a2 2f87c854fe:d10"},{"g":"壊れたスキルを黙って回避","to":[["stop","禁止"]],"h":"24bd6eb895:a2 2f87c854fe:d10"}]}]},"timeline":[{"sha":"2f87c854fe","date":"2026-11-16","ver":"0.15.43","type":"f","add":508,"del":2764,"title":"スキルの本文を短縮、`worker.md` を追加、Opus を優先し xhigh を上限とするモデルの振り分け","pr":1249,"tags":[["pb","orchestrate",true]],"star":true},{"sha":"bf0c7cd80a","date":"2026-11-15","ver":"0.15.42","type":"f","add":748,"del":2061,"title":"既定モデルを変更、`/why` と `/how` を1ファイルへ縮小、statechart の修正、sharpen と reflect の文言","pr":1236,"star":true},{"sha":"c742dd6170","date":"2026-10-27","ver":"0.15.36","type":"f","add":42,"del":6348,"title":"Orchestrate をエージェント主導へ変更し、orch スクリプトを削除","pr":1043,"star":true},{"sha":"ab1f702ce8","date":"2026-10-27","ver":"0.15.35","type":"f","add":146,"del":674,"title":"直近のスキル更新を移植","pr":986,"star":true},{"sha":"519d36aa98","date":"2026-10-27","ver":"0.15.34","type":"t","add":22,"del":6,"title":"statechart の SIGKILL 表示テストで、プロセスの回収を待機","pr":981},{"sha":"164ced10fa","date":"2026-10-27","ver":"0.15.34","type":"c","add":4,"del":4,"title":"0.15.34 へ更新","pr":983},{"sha":"740d2c0786","date":"2026-10-27","ver":"0.15.33","type":"x","add":456,"del":20,"title":"プロパティのトレースで、修飾付きのアクション名を保持","pr":982},{"sha":"7c7bde7033","date":"2026-10-27","ver":"0.15.33","type":"c","add":4,"del":4,"title":"0.15.33 へ更新","pr":978},{"sha":"34b1b7c96f","date":"2026-10-27","ver":"0.15.32","type":"f","add":39577,"del":24265,"title":"statechart のコンパイラーを移植","pr":977},{"sha":"e73df471cd","date":"2026-10-23","ver":"0.15.32","type":"x","add":8,"del":8,"title":"swarm の Phase A の番号を修正し、表への参照切れを解消","pr":807},{"sha":"a0b0ad99fc","date":"2026-10-23","ver":"0.15.32","type":"d","add":4,"del":0,"title":"Claude Code がサードパーティのマーケットプレイスを自動更新しない旨を追記","pr":806},{"sha":"f83fbe695e","date":"2026-10-23","ver":"0.15.32","type":"x","add":20,"del":4,"title":"worktree-audit が GNU の stat と date で会話記録の更新時刻を取得","pr":805},{"sha":"3c596e701b","date":"2026-10-23","ver":"0.15.32","type":"x","add":82,"del":6,"title":"orch: ブランチの履歴よりアクティブな PR を優先","pr":804},{"sha":"86c2448db1","date":"2026-10-23","ver":"0.15.32","type":"x","add":30,"del":2,"title":"対応するインラインコードの区切りを認識","pr":803},{"sha":"fe096ef31c","date":"2026-10-23","ver":"0.15.32","type":"x","add":140,"del":4,"title":"watch-pr: ポーリングの待機を期限で打ち切り","pr":802},{"sha":"96dec8ee58","date":"2026-10-23","ver":"0.15.32","type":"x","add":146,"del":4,"title":"watch-pr: スタックの探索でフォークの head を区別","pr":801},{"sha":"7054003c37","date":"2026-10-23","ver":"0.15.32","type":"x","add":4,"del":0,"title":"reflect の編集先をプラグインのキャッシュの外へ変更","pr":800},{"sha":"b1a129891c","date":"2026-10-23","ver":"0.15.32","type":"c","add":4,"del":4,"title":"0.15.32 へ更新","pr":798},{"sha":"3c0fdb4e76","date":"2026-10-23","ver":"0.15.31","type":"f","add":54,"del":0,"title":"ketchup-video スキルを追加","pr":797,"tags":[["skill","ketchup-video"]],"star":true},{"sha":"00d5decc6f","date":"2026-10-23","ver":"0.15.31","type":"f","add":4,"del":0,"title":"生成した検証スキルが、モデル検査の結果を `/statechart` で読むよう指示","pr":794},{"sha":"642289e6b1","date":"2026-10-23","ver":"0.15.31","type":"c","add":4,"del":4,"title":"0.15.31 へ更新","pr":792},{"sha":"076f4b2f57","date":"2026-10-23","ver":"0.15.30","type":"f","add":13866,"del":4198,"title":"statechart スキルを最新化し、Pele レンダラーを導入","pr":791},{"sha":"4ec7ffa173","date":"2026-10-22","ver":"0.15.30","type":"r","add":88,"del":128,"title":"statechart のコードを繰り返すコメントを削除し、ヘルパーを改名","pr":779},{"sha":"7698375f92","date":"2026-10-22","ver":"0.15.30","type":"x","add":2412,"del":374,"title":"statechart スキルへ6件の修正を反映","pr":776},{"sha":"eb4db2b55b","date":"2026-10-22","ver":"0.15.30","type":"f","add":12655,"del":4,"title":"TLA+ のモデルを図として描画する statechart スキルを追加","pr":741,"tags":[["skill","statechart"]],"star":true},{"sha":"88d47514b8","date":"2026-10-20","ver":"0.15.29","type":"x","add":40,"del":22,"title":"`/sharpen` を元のプロンプトへ復元し、書き換えた結果だけを返却","pr":729},{"sha":"d457567332","date":"2026-10-19","ver":"0.15.28","type":"c","add":6,"del":6,"title":"0.15.28 へ更新し、ガイドを create-formal-verification-skill と同期","pr":724},{"sha":"7b353f78f6","date":"2026-10-19","ver":"0.15.27","type":"f","add":140,"del":12,"title":"maintain-formal-verification-skill を追加","pr":716,"tags":[["skill","maintain-formal-verification-skill"]],"star":true},{"sha":"6b78e9f4e4","date":"2026-10-19","ver":"0.15.27","type":"x","add":2,"del":2,"title":"create-formal-verification-skill に TLA+ の既定と、検証器がない場合の代替を追加","pr":721},{"sha":"f9be7aa00c","date":"2026-10-18","ver":"0.15.27","type":"f","add":156,"del":22,"title":"setup で形式検証を提案し、help とガイドを同期","pr":715},{"sha":"0148b78c56","date":"2026-10-18","ver":"0.15.27","type":"c","add":4,"del":4,"title":"0.15.27 へ更新","pr":713},{"sha":"75fabace38","date":"2026-10-18","ver":"0.15.26","type":"x","add":2,"del":2,"title":"sharpen から、書き換えたプロンプトの禁止を削除","pr":712},{"sha":"0b8e952052","date":"2026-10-18","ver":"0.15.26","type":"c","add":4,"del":4,"title":"0.15.26 へ更新","pr":710},{"sha":"4382e687a5","date":"2026-10-18","ver":"0.15.25","type":"f","add":86,"del":0,"title":"`/create-formal-verification-skill` を追加","pr":709,"tags":[["skill","create-formal-verification-skill"]],"star":true},{"sha":"bc1443790c","date":"2026-10-18","ver":"0.15.25","type":"x","add":2,"del":2,"title":"ketchup は語数に収めるために項目を削らないと明記","pr":708},{"sha":"16541c6bc1","date":"2026-10-18","ver":"0.15.25","type":"x","add":30,"del":18,"title":"待機中の項目をすべて列挙し、ketchup の各呼び出しを判断可能に変更","pr":692},{"sha":"019a6a2059","date":"2026-10-17","ver":"0.15.25","type":"d","add":202,"del":50,"title":"文書を更新し、文書とツリーの整合チェックを追加","pr":704},{"sha":"1b80080058","date":"2026-10-17","ver":"0.15.25","type":"x","add":1452,"del":22,"title":"Claude Code プラグインの3つの不備を解消","pr":705},{"sha":"a968159326","date":"2026-10-17","ver":"0.15.25","type":"x","add":10,"del":4,"title":"すべてのスキル名をフォルダー名に統一","pr":702},{"sha":"0317eb8b85","date":"2026-10-17","ver":"0.15.25","type":"x","add":14,"del":6,"title":"ブランド型を as ではなく型ガードで生成","pr":700},{"sha":"182f2ce414","date":"2026-10-16","ver":"0.15.25","type":"f","add":12652,"del":1,"title":"生成したツリーから Claude Code へ pstack を導入可能に変更","pr":637,"star":true},{"sha":"99743e9c15","date":"2026-10-15","ver":"0.15.25","type":"r","add":2,"del":39,"title":"4つのスキルから周辺的な節を削除","pr":634},{"sha":"e5136d8241","date":"2026-10-15","ver":"0.15.25","type":"r","add":39,"del":47,"title":"過剰に規定された4つの原則を、規則ではなく理由として再記述","pr":633,"star":true},{"sha":"6ce45c59b9","date":"2026-10-14","ver":"0.15.25","type":"c","add":2,"del":2,"title":"0.15.25 へ更新","pr":614},{"sha":"afd51cf66a","date":"2026-10-14","ver":"0.15.24","type":"f","add":7,"del":7,"title":"`/ketchup` が変更をスクリーンショット・動画・図で説明","pr":628},{"sha":"1e5c90a4b6","date":"2026-10-14","ver":"0.15.24","type":"c","add":2,"del":2,"title":"0.15.24 へ更新","pr":617},{"sha":"79afd75d5b","date":"2026-10-14","ver":"0.15.23","type":"f","add":10,"del":0,"title":"`/sharpen` を追加","pr":615,"tags":[["skill","sharpen"]],"star":true},{"sha":"8043881e5c","date":"2026-10-14","ver":"0.15.23","type":"f","add":3,"del":3,"title":"autopilot のループが `/ketchup` で運用者へ状況を共有","pr":616},{"sha":"ce649c03ac","date":"2026-10-14","ver":"0.15.23","type":"f","add":595,"del":343,"title":"サブエージェントの推論レベルを仕事に合わせて調整、orchestrate から Graphite を除外、プレイブックを原則へ集約","pr":613,"star":true},{"sha":"c86f349b10","date":"2026-10-13","ver":"0.15.23","type":"r","add":17,"del":13,"title":"`/ketchup` を `/bro` と同じ調子の150語へ変更","pr":609},{"sha":"dbf49813a3","date":"2026-10-13","ver":"0.15.23","type":"r","add":4,"del":4,"title":"`/in-your-own-words` を目的と問題を軸に再記述","pr":606},{"sha":"3177dab5d4","date":"2026-10-13","ver":"0.15.22","type":"c","add":2,"del":2,"title":"0.15.22 へ更新","pr":605},{"sha":"36cecbf2b5","date":"2026-10-13","ver":"0.15.21","type":"f","add":1,"del":0,"title":"深いデバッグの後に、低コストの常時シグナルを提案","pr":604},{"sha":"d00ba6ee9b","date":"2026-10-13","ver":"0.15.21","type":"f","add":15,"del":9,"title":"`/ketchup` の返答を短縮し、実際の視覚資料で構成","pr":595},{"sha":"7d8d9091e5","date":"2026-10-13","ver":"0.15.21","type":"f","add":10,"del":0,"title":"作業の前に目的を言い直す `/in-your-own-words` を追加","pr":602,"tags":[["skill","in-your-own-words"]],"star":true},{"sha":"b93e811788","date":"2026-10-13","ver":"0.15.21","type":"x","add":3,"del":3,"title":"poteto-agent が poteto-mode を発見可能に変更、無視される frontmatter を削除、/ メニューを文書化","pr":597},{"sha":"997ffc7fe2","date":"2026-10-12","ver":"0.15.21","type":"c","add":2,"del":2,"title":"0.15.21 へ更新","pr":584},{"sha":"364a77eb35","date":"2026-10-12","ver":"0.15.20","type":"x","add":3,"del":1,"title":"同梱の個別スキルの場所をエージェントへ明示","pr":577},{"sha":"1b6d44ff26","date":"2026-10-12","ver":"0.15.20","type":"c","add":2,"del":2,"title":"0.15.20 へ更新","pr":581},{"sha":"c49b37a2c0","date":"2026-10-12","ver":"0.15.19","type":"x","add":3,"del":3,"title":"create-verification-skill の準備完了を「アプリが使用可能」と定義","pr":573},{"sha":"e5a02f8fb0","date":"2026-10-12","ver":"0.15.19","type":"f","add":21,"del":0,"title":"Agent Plugins v1 のルートマニフェストを追加","pr":576},{"sha":"2bd5dd4f22","date":"2026-10-12","ver":"0.15.19","type":"x","add":6,"del":4,"title":"`/poteto-mode` のチャットを実行者、poteto-agent を委任先に変更","pr":575,"star":true},{"sha":"cf9a111eaf","date":"2026-10-12","ver":"0.15.19","type":"x","add":37,"del":6,"title":"worktree-audit が MERGED を origin/main ではなく既定ブランチと照合","pr":574},{"sha":"bc697d0a5a","date":"2026-10-12","ver":"0.15.19","type":"x","add":1,"del":1,"title":"unslop の説明から「Must always apply.」を削除","pr":572},{"sha":"ff8f83da30","date":"2026-10-12","ver":"0.15.19","type":"x","add":173,"del":25,"title":"watch-pr: レビューのスレッドを最初の100件に限定せず、ページ送りで取得","pr":484},{"sha":"87c810326a","date":"2026-10-12","ver":"0.15.19","type":"x","add":121,"del":5,"title":"計画のチェックでフェンス付きコードブロックを考慮","pr":536},{"sha":"de2dba6ffa","date":"2026-10-12","ver":"0.15.19","type":"x","add":3,"del":3,"title":"Comment Sicko のエージェント ID を改名し、Grok から起動可能に変更","pr":486},{"sha":"08bd59b378","date":"2026-10-12","ver":"0.15.19","type":"r","add":3,"del":179,"title":"7つのスキルから不要な節を削除","pr":571},{"sha":"ea32d9562a","date":"2026-10-12","ver":"0.15.18","type":"f","add":6,"del":2,"title":"`/ketchup` の判断を変更前後の視覚資料で提示","pr":570},{"sha":"978ca6e9c0","date":"2026-10-10","ver":"0.15.17","type":"f","add":27,"del":2,"title":"`/ketchup` スキルを追加","pr":539,"tags":[["skill","ketchup"]],"star":true},{"sha":"00b14f1df3","date":"2026-10-10","ver":"0.15.16","type":"r","add":406,"del":736,"title":"スキルのプロンプトを圧縮し、トークンを削減","pr":538},{"sha":"df581122cd","date":"2026-10-06","ver":"0.15.15","type":"f","add":41,"del":40,"title":"Sol を除外し、既定を Opus xhigh と Grok へ変更","pr":511,"star":true},{"sha":"1e56b29134","date":"2026-10-06","ver":"0.15.14","type":"f","add":6,"del":1,"title":"モデルのルールがない場合、`/poteto-help` が `/setup-pstack` を案内","pr":509},{"sha":"2cbf58508f","date":"2026-10-05","ver":"0.15.13","type":"d","add":340,"del":25,"title":"`/correct`、チェックリスト、プロンプトの助言についてガイドを更新","pr":508},{"sha":"807c031086","date":"2026-10-05","ver":"0.15.12","type":"f","add":103,"del":5,"title":"`/poteto-help` にプロンプトの参考資料を追加","pr":507},{"sha":"00b52d954a","date":"2026-10-05","ver":"0.15.11","type":"x","add":6,"del":5,"title":"`/poteto-help` を、利用者が入力した場合だけ起動","pr":506},{"sha":"4e5b1cf2cc","date":"2026-10-05","ver":"0.15.10","type":"f","add":157,"del":8,"title":"`/poteto-help` スキルを追加","pr":502,"tags":[["skill","poteto-help"]],"star":true},{"sha":"e43c7ee26e","date":"2026-10-04","ver":"0.15.9","type":"r","add":13,"del":12,"title":"perf-issue のステップ2を性能の標語だけに変更","pr":496},{"sha":"a586282712","date":"2026-10-03","ver":"0.15.8","type":"f","add":26,"del":2,"title":"`/architect` の設計を、エージェントの誤りに強い形へ変更","pr":495},{"sha":"9511e60321","date":"2026-10-03","ver":"0.15.7","type":"f","add":35,"del":1,"title":"`/correct` スキルを追加","pr":494,"tags":[["skill","correct"]],"star":true},{"sha":"23e4138daa","date":"2026-10-03","ver":"0.15.6","type":"f","add":128,"del":55,"title":"explain-the-number、新しいサブエージェントの原則、autopilot の毎時の確認、PR の見出し、スキーマ優先のキャストを移植","tags":[["skill","benchmark-checklist"],["prin","explain-the-number"]],"star":true},{"sha":"12d587dfb2","date":"2026-09-23","ver":"0.15.5","type":"x","add":43,"del":36,"title":"ルールの競合を解消し、モデルのルールの読み取り方を統一","pr":422},{"sha":"b0b9c7a0ba","date":"2026-09-23","ver":"0.15.4","type":"d","add":13,"del":31,"title":"Opus 5.5 に不要な指示をさらに19件削除","pr":419},{"sha":"b42effe0aa","date":"2026-09-23","ver":"0.15.3","type":"x","add":2,"del":2,"title":"公開している更新の案内から旧モデル名を除去","pr":416},{"sha":"70b2dc8b4b","date":"2026-09-23","ver":"0.15.3","type":"f","add":81,"del":101,"title":"スキルの更新を移植し、既定を Opus 5.5 と Grok 4.7 へ変更","pr":414,"star":true},{"sha":"5bf2b1544d","date":"2026-09-13","ver":"0.15.2","type":"f","add":17,"del":7,"title":"setup-pstack が予算（max・xhigh・high・medium）を質問","pr":366},{"sha":"889ec4b68f","date":"2026-09-12","ver":"0.15.2","type":"x","add":7,"del":7,"title":"bug-fix・perf・hillclimb の既定を grok 4.6 へ変更","pr":365},{"sha":"f5bdd6826f","date":"2026-09-11","ver":"0.15.2","type":"x","add":11,"del":11,"title":"運用者を性別に依存しない代名詞で記載、チャット内の状況確認を追加","pr":362},{"sha":"f8abeddd18","date":"2026-09-09","ver":"0.15.1","type":"f","add":2,"del":1,"title":"すべての主張に根拠または確度を付記","pr":341,"star":true},{"sha":"71ed0d1076","date":"2026-09-08","ver":"0.15.0","type":"c","add":7,"del":6,"title":"0.15.0 へ更新し、README と文書の件数を同期","pr":333},{"sha":"d7cde2b84e","date":"2026-09-08","ver":"0.14.8","type":"r","add":220,"del":220,"title":"スキルの文章のセミコロン・長いダッシュ・接続のコロンを、句点と読点へ置換","pr":331},{"sha":"e8d856f027","date":"2026-09-07","ver":"0.14.8","type":"r","add":366,"del":633,"title":"スキル全体の密度と癖のある文章を整理し、原則を2件追加","pr":329,"tags":[["prin","attack-the-premise"],["prin","test-behavior-not-implementation"]],"star":true},{"sha":"7314f723a4","date":"2026-09-03","ver":"0.14.8","type":"x","add":1,"del":1,"title":"ロゴを 512KiB 未満へ縮小","pr":309},{"sha":"efa2a53198","date":"2026-09-02","ver":"0.14.7","type":"f","add":2,"del":1,"title":"プラグインのロゴを追加","pr":303},{"sha":"23a56e2dac","date":"2026-09-01","ver":"0.14.6","type":"d","add":103,"del":78,"title":"特定の forge に依存しないプレイブックと、Fable 5.1 の既定を移植","star":true},{"sha":"73f8be4873","date":"2026-09-01","ver":"0.14.5","type":"x","add":5,"del":0,"title":"5つのスキルでモデルによる起動を無効化","pr":300},{"sha":"6fecddba65","date":"2026-08-27","ver":"0.14.5","type":"x","add":2,"del":2,"title":"make-bot-ui を skills の直下へ登録","pr":275,"tags":[["skill","make-bot-ui"],["skill","grokbot",true]]},{"sha":"799151d91b","date":"2026-08-27","ver":"0.14.4","type":"f","add":116,"del":1,"title":"make-bot-ui スキルを追加","pr":271,"tags":[["skill","grokbot"]],"star":true},{"sha":"bdf7aa3553","date":"2026-08-25","ver":"0.14.3","type":"d","add":340,"del":107,"title":"複数 PR の計画を、検証済みのチェックリストへ変更","pr":258},{"sha":"4612556130","date":"2026-08-21","ver":"0.14.2","type":"d","add":26,"del":8,"title":"ワークフローと境界の指針を移植","pr":238},{"sha":"63d938c2e4","date":"2026-08-13","ver":"0.14.1","type":"c","add":22,"del":22,"title":"Grok の既定を 4.5 から 4.6 へ更新","pr":210},{"sha":"424829e3e0","date":"2026-08-02","ver":"0.14.0","type":"d","add":91,"del":8,"title":"新しいスキルとプレイブックに合わせてガイドを更新","pr":188},{"sha":"99559f2f52","date":"2026-08-02","ver":"0.14.0","type":"f","add":6917,"del":28,"title":"bro、babysit・shipping・orchestrate・worktree-cleanup を追加し、未反映の更新を移植","pr":187,"tags":[["skill","bro"],["pb","babysit"],["pb","orchestrate"],["pb","shipping"],["pb","worktree-cleanup"]],"star":true},{"sha":"b047069f4f","date":"2026-08-02","ver":"0.13.0","type":"f","add":232,"del":7,"title":"autopilot のプレイブック、`/no-comments`、Comment Sicko、`/technical-writing` を追加","pr":185,"tags":[["skill","no-comments"],["skill","technical-writing"],["pb","autopilot-full"],["pb","autopilot-stack"]],"star":true},{"sha":"0b7ef5b61f","date":"2026-07-30","ver":"0.12.0","type":"d","add":30,"del":6,"title":"0.12.0 に合わせてガイドを更新"},{"sha":"91dd7b7119","date":"2026-07-30","ver":"0.11.14","type":"x","add":4,"del":4,"title":"swarm のレビュー指摘へ対応"},{"sha":"b79f8ca89e","date":"2026-07-30","ver":"0.11.15","type":"f","add":53,"del":4,"title":"swarm スキルを追加","tags":[["skill","swarm"]],"star":true},{"sha":"4483dcd246","date":"2026-07-30","ver":"0.11.14","type":"f","add":133,"del":2,"title":"create-verification-skill に機能マップの参考資料を追加","pr":178},{"sha":"45c66fde1f","date":"2026-07-29","ver":"0.11.13","type":"f","add":57,"del":9,"title":"architect のインターフェースの指針を拡充","pr":175},{"sha":"91be0f994b","date":"2026-07-27","ver":"0.11.12","type":"f","add":76,"del":3,"title":"構成的な型モデリングの指針を追加","pr":174},{"sha":"ba7b590784","date":"2026-07-26","ver":"0.11.10","type":"x","add":4,"del":3,"title":"自律実行で発見した事項の責任範囲を明確化","pr":170},{"sha":"d45ad028b7","date":"2026-07-26","ver":"0.11.9","type":"f","add":13,"del":12,"title":"モデルのパネルに Opus 5 を追加","pr":169},{"sha":"04166ac891","date":"2026-07-23","ver":"0.11.8","type":"r","add":32,"del":36,"title":"モデル設定の記載を定義箇所へ集約","pr":167},{"sha":"02c03a9ded","date":"2026-07-22","ver":"0.11.7","type":"d","add":689,"del":0,"title":"公開用の利用チュートリアルを追加","pr":164},{"sha":"03e087aebe","date":"2026-07-22","ver":"0.11.7","type":"f","add":5,"del":5,"title":"explorer の役割の既定を grok へ変更","pr":166},{"sha":"e1007b141f","date":"2026-07-22","ver":"0.11.6","type":"f","add":36,"del":36,"title":"パネルの既定を fable・sol・grok へ変更","pr":165,"star":true},{"sha":"63432f3196","date":"2026-07-22","ver":"0.11.5","type":"f","add":34,"del":23,"title":"inherit-parent と auto に対応（Task の model を省略）","pr":163,"star":true},{"sha":"fe77e7792d","date":"2026-07-22","ver":"0.11.4","type":"f","add":2,"del":1,"title":"fix-root-causes: 冗長な回避策のコメントを検出","pr":162},{"sha":"3fe2823ce1","date":"2026-07-14","ver":"0.11.3","type":"r","add":28,"del":24,"title":"非公開のスキルツリーと内容を同期","pr":156},{"sha":"f4d9e39d97","date":"2026-07-13","ver":"0.11.2","type":"f","add":9,"del":0,"title":"perf のプレイブックに8系統の戦略を追加","pr":155},{"sha":"a29f5a8ca1","date":"2026-07-12","ver":"0.11.2","type":"c","add":1,"del":1,"title":"0.11.2 へ更新","pr":154},{"sha":"8f008c4198","date":"2026-07-12","ver":"0.11.1","type":"f","add":22,"del":0,"title":"teach スキルを追加（how と why を1つの説明へ統合）","pr":153,"tags":[["skill","teach"]],"star":true},{"sha":"20bdb6cdfd","date":"2026-07-12","ver":"0.11.1","type":"c","add":1,"del":1,"title":"0.11.1 へ更新","pr":152},{"sha":"6714489fa2","date":"2026-07-12","ver":"0.11.0","type":"x","add":1,"del":1,"title":"maintain-verification-skill: 整理の粒度、doctor の再実行、証拠の確認","pr":151},{"sha":"e42d29fd5c","date":"2026-07-12","ver":"0.11.0","type":"f","add":90,"del":1,"title":"create-verification-skill と maintain-verification-skill を追加","pr":150,"tags":[["skill","create-verification-skill"],["skill","maintain-verification-skill"]],"star":true},{"sha":"9d2a3f2d12","date":"2026-07-11","ver":"0.10.4","type":"x","add":1,"del":1,"title":"poteto-mode に表示名を付与","pr":149},{"sha":"9251b2666b","date":"2026-07-11","ver":"0.10.4","type":"d","add":127,"del":57,"title":"README の先頭を2ステップのクイックスタートへ変更","pr":148},{"sha":"a8145426e5","date":"2026-07-11","ver":"0.10.4","type":"f","add":32,"del":4,"title":"model-the-domain の原則を追加し、README を実態と同期","pr":147,"tags":[["prin","model-the-domain"]],"star":true},{"sha":"0dda29e839","date":"2026-07-09","ver":"0.10.3","type":"f","add":5,"del":1,"title":"poteto-mode を、条件付きリマインダーを持つ常駐モードへ変更","pr":144,"star":true},{"sha":"9b80b53498","date":"2026-07-08","ver":"0.10.2","type":"f","add":3,"del":2,"title":"最難関の仕事を claude-fable-5-thinking-max へ振り分け","pr":143,"star":true},{"sha":"dc2fae6625","date":"2026-07-08","ver":"0.10.1","type":"f","add":20,"del":20,"title":"composer の枠を grok-4.5-fast-xhigh へ変更","pr":142,"star":true},{"sha":"0452e08a31","date":"2026-06-24","ver":"0.10.0","type":"f","add":1619,"del":1,"title":"Benny の issue 自動化パックを追加","pr":137,"star":true},{"sha":"e46364b8be","date":"2026-06-17","ver":"0.9.2","type":"f","add":88,"del":1,"title":"recall と blast-radius のスキルを追加","pr":135,"tags":[["skill","blast-radius"],["skill","recall"]],"star":true},{"sha":"cfd81b3961","date":"2026-06-14","ver":"0.9.1","type":"c","add":3,"del":2,"title":"0.9.1 へ更新し、README に hillclimb のプレイブックを記載","pr":133},{"sha":"b64f02a456","date":"2026-06-14","ver":"0.9.0","type":"f","add":28,"del":2,"title":"Hillclimb のプレイブックを追加し、Autonomous run の停止条件を厳格化","pr":132,"tags":[["pb","hillclimb"]],"star":true},{"sha":"74dd2291e8","date":"2026-06-07","ver":"0.9.0","type":"d","add":5,"del":4,"title":"README を出荷済みの原則とプレイブックへ同期","pr":126},{"sha":"a5cda8b561","date":"2026-06-07","ver":"0.9.0","type":"c","add":1,"del":1,"title":"0.9.0 へ更新","pr":125},{"sha":"91707573f1","date":"2026-06-06","ver":"0.8.0","type":"f","add":1,"del":2,"title":"リファクタリングのコミットを PR 作成の前に整形","pr":124},{"sha":"318e8f74cc","date":"2026-06-06","ver":"0.8.0","type":"f","add":7,"del":6,"title":"実験で決着できる分岐は、質問せず試作で解消","pr":122,"star":true},{"sha":"27daaa3091","date":"2026-06-06","ver":"0.8.0","type":"f","add":29,"del":0,"title":"「検証可能な単位を順に進める」原則を追加","pr":123,"tags":[["prin","sequence-verifiable-units"]],"star":true},{"sha":"6605d7adc3","date":"2026-06-06","ver":"0.8.0","type":"f","add":90,"del":48,"title":"`/setup-pstack` による役割別のモデル設定を追加","pr":121,"tags":[["skill","setup-pstack"]],"star":true},{"sha":"881e794248","date":"2026-06-06","ver":"0.7.0","type":"c","add":1,"del":1,"title":"0.7.0 へ更新","pr":117},{"sha":"97d645a601","date":"2026-06-06","ver":"0.6.0","type":"f","add":2,"del":1,"title":"レビューへの懐疑的な対応の起動条件と、複数の形がある仕事の arena への振り分けを追加","pr":116,"star":true},{"sha":"2f3a47e6c4","date":"2026-06-06","ver":"0.6.0","type":"f","add":11,"del":0,"title":"pause-safely のプレイブックを追加","pr":115,"tags":[["pb","pause-safely"]],"star":true},{"sha":"64fe0147d3","date":"2026-06-05","ver":"0.6.0","type":"r","add":2,"del":0,"title":"強制の強さの段階を encode-lessons-in-structure へ統合","pr":114},{"sha":"c8402bc8e3","date":"2026-05-30","ver":"0.6.0","type":"r","add":123,"del":127,"title":"how・interrogate・architect・reflect を簡潔化","pr":106},{"sha":"f7e01457bb","date":"2026-05-30","ver":"0.6.0","type":"r","add":352,"del":403,"title":"why と poteto-mode を簡潔化","pr":105},{"sha":"683cdbda98","date":"2026-05-29","ver":"0.6.0","type":"c","add":6,"del":4,"title":"0.6.0 へ更新し、README を更新","pr":104},{"sha":"c532aa167c","date":"2026-05-29","ver":"0.5.0","type":"f","add":3,"del":0,"title":"返答で利用者と保守担当者への影響を提示","pr":103,"star":true},{"sha":"ba7781cce6","date":"2026-05-29","ver":"0.5.0","type":"f","add":14,"del":12,"title":"build-the-lever を、単純ではない作業すべての既定へ変更","pr":102},{"sha":"bb3e165665","date":"2026-05-29","ver":"0.5.0","type":"c","add":1,"del":1,"title":"0.5.0 へ更新","pr":101},{"sha":"939812915e","date":"2026-05-29","ver":"0.4.0","type":"f","add":55,"del":1,"title":"interrogate に、複数モデルによるコード品質の観点を追加","pr":100},{"sha":"ec44aed93c","date":"2026-05-29","ver":"0.4.0","type":"c","add":12,"del":12,"title":"Opus 4.7 の記載を 4.8 へ更新","pr":98},{"sha":"0fe5b8a095","date":"2026-05-28","ver":"0.4.0","type":"f","add":7,"del":2,"title":"architect を利用側優先の設計へ変更（呼び出し側の使い方を仕様とする）","pr":99},{"sha":"9da4009e12","date":"2026-05-28","ver":"0.4.0","type":"c","add":1,"del":1,"title":"0.4.0 へ更新","pr":93},{"sha":"65f4dacee2","date":"2026-05-28","ver":"0.3.0","type":"f","add":2,"del":1,"title":"build-the-lever の道具は、サブエージェントが従うスキルでも可","pr":91},{"sha":"6f2e0c6318","date":"2026-05-27","ver":"0.3.0","type":"c","add":1,"del":1,"title":"0.3.0 へ更新","pr":90},{"sha":"47f3df8272","date":"2026-05-27","ver":"0.2.0","type":"f","add":11,"del":0,"title":"show-me-your-work: 記録を別のモデルでレビュー","pr":89},{"sha":"8d7ca2653d","date":"2026-05-26","ver":"0.2.0","type":"f","add":2,"del":2,"title":"bug-fix に二分探索の仮説ループ、合成した再現、`/loop` を追加","pr":88},{"sha":"21327bee99","date":"2026-05-26","ver":"0.2.0","type":"c","add":1,"del":1,"title":"0.2.0 へ更新","pr":86},{"sha":"7dddd9bcfe","date":"2026-05-26","ver":"0.1.0","type":"d","add":20,"del":1,"title":"README のプレイブックを全件の表へ変更","pr":85},{"sha":"7b1c32e4c3","date":"2026-05-26","ver":"0.1.0","type":"f","add":23,"del":2,"title":"build-the-lever の原則を追加","pr":84,"tags":[["prin","build-the-lever"]],"star":true},{"sha":"bbc0d75eb2","date":"2026-05-26","ver":"0.1.0","type":"f","add":29,"del":0,"title":"session-pickup と trace-forensics のプレイブックを追加","pr":83,"tags":[["pb","session-pickup"],["pb","trace-forensics"]],"star":true},{"sha":"f18ffc1bd6","date":"2026-05-26","ver":"0.1.0","type":"f","add":16,"del":0,"title":"refactoring のプレイブックを追加","pr":81,"tags":[["pb","refactoring"]],"star":true},{"sha":"a9e675642e","date":"2026-05-25","ver":"0.1.0","type":"d","add":29,"del":16,"title":"README の例に figure-it-out と show-me-your-work を追加","pr":80},{"sha":"11ecc12a3f","date":"2026-05-25","ver":"0.1.0","type":"x","add":22,"del":4,"title":"show-me-your-work の log.sh を堅牢化し、スキルの説明を短縮","pr":79},{"sha":"35f33923cd","date":"2026-05-24","ver":"0.1.0","type":"f","add":161,"del":1,"title":"figure-it-out と show-me-your-work のスキルを追加","pr":78,"tags":[["skill","figure-it-out"],["skill","show-me-your-work"]],"star":true},{"sha":"b8f2564c2e","date":"2026-05-24","ver":"0.1.0","type":"d","add":1,"del":1,"title":"README の機能開発の例を簡素化","pr":77},{"sha":"3dd382f4db","date":"2026-05-23","ver":"0.1.0","type":"d","add":23,"del":0,"title":"README に使用例を追加","pr":76},{"sha":"6754d3c09e","date":"2026-05-23","ver":"0.1.0","type":"d","add":1,"del":0,"title":"README のスキル表に typescript-best-practices を追加"},{"sha":"24bd6eb895","date":"2026-05-23","ver":"0.1.0","type":"f","add":3776,"del":0,"title":"pstack プラグインを追加（スキル29件、プレイブック12件）","star":true}],"hist":{"24bd6eb895":[["a",0,"frontmatter の起動設定","","poteto、`/poteto-mode`、この作業様式での作業依頼を対象とする。`disable-model-invocation: true` により、モデルによる自動起動は無効。"],["a",6,"多段階タスクの冒頭で Principles 節を読む規則","","多段階タスクは、Principles 節の全文を読む項目を先頭に置いた todolist で開始する。返答では、判断に影響した原則と、それにより変更した具体的な選択を記載する。具体的な判断を伴わない原則の引用は、個別スキルを読まなかった証拠とみなす。"],["a",0,"Non-negotiables の起動条件一覧","","非自明な変更・設計判断・「本当に大丈夫か」→ `how`。コード全般 → 先にデータ形状を命名。関数境界をまたぐ変更 → `architect`。議論のある設計 → `interrogate`。非自明な多段階作業 → スループットのチェックポイント (Feature 手順 3)。文章全般 → `unslop` (エージェント向け文章は `create-skill` にも準拠)。コミット前 → `deslop`。UI / IDE / CLI の出荷 → `control-cli` / `control-ui`。PR 作成後 → `babysit`。作業中に壊れたスキル → 停止せず別 PR で修正。"],["a",1,"原則 18 件の一覧","","Core: Laziness Protocol、Foundational Thinking、Redesign from First Principles、Subtract Before You Add、Minimize Reader Load、Outcome-Oriented Execution、Experience First、Exhaust the Design Space。Architecture: Boundary Discipline、Type System Discipline、Make Operations Idempotent、Migrate Callers Then Delete Legacy APIs、Separate Before Serializing Shared State。Verification: Prove It Works、Fix Root Causes。Delegation: Guard the Context Window、Never Block on the Human。Meta: Encode Lessons in Structure。適用する原則は個別スキルの全文を読む。"],["a",2,"Autonomy 節","","可逆な作業と外部操作 (チームチャット、チケット更新、評価の起動) は確認せずに実施する。不可逆な書き込み (共有ブランチへの force-push、デプロイ、データ削除、顧客向けメッセージ) は必ず停止する。「止まるな」「寝る」等の指示があれば継続する。是非を問われた場合は迎合せず本心の判断を返し、不要なら断る。"],["a",3,"Subagents 節","","プレイブック内で直接起動するサブエージェントは `poteto-agent` とし、`how` / `why` / `interrogate` / `reflect` は各スキルの指定に従う。`Task` の既定は `run_in_background: true`、agent モード、文脈はファイルポインタで渡し、モデルを明示 (コードは `composer-2.5-fast`、文章と判断は `claude-opus-4-7-thinking-xhigh`)。サブエージェントの成果は自分で差分を確認して要約し、中断連鎖の再開ではなく新しいサブエージェントを起動する。セカンドオピニオンは同じプロンプトを別モデルで実行する。"],["a",4,"Writing the reply 節","","下書きの時点で清書する (事後の除去は失敗する)。短い平叙文、長いダッシュの全面禁止、文中の接続としてのコロンの禁止、簡潔さを理由に必要な節を省略しない、リンク・引用・トランスクリプト参照を捏造しない。全プレイブックの返答は PR リンクを `https://github.com/\u003cowner>/\u003crepo>/pull/\u003cnumber>` 形式で記載する。"],["a",4,"Comments 節","","コメントも返答と同じ規則で書く。検証・テストスクリプトの段階を説明するコメントは書かず、アサーションやログ文字列で記述する。委任先の差分を含む全ファイルが対象で、コードが示せない自明でない理由だけをコメントに残す。"],["a",5,"プレイブック 12 件と選択規則","","タスクに合うプレイブックを選択し、その手順を推論前に todolist の先頭へ逐語で複写する。実施しない手順は `skip: \u003c理由>` を付けて残す。一覧: Investigation、Bug fix、Perf issue、Runtime forensics、Feature、Prototype、Visual parity、Authoring or modifying a skill、Eval、Autonomous run、Multi-phase or multi-PR plan、Opening a PR。"],["a",0,"UI・IDE・CLI のバグ修正は自分で同じ操作面から再現","","UI・IDE・CLI の出荷では、バグ修正を自分で同じ操作面から先に再現する。利用者への引き渡しは、Bug fix のステップ1の限定的な例外に限定する。"]],"35f33923cd":[["a",0,"`show-me-your-work` による判断記録の起動条件を追加","","長時間・自律・多段階の作業、またはユーザーが離席して後で確認する作業 (「寝る」「戻ったら信頼する」「/loop until X」) では、`show-me-your-work` で判断の記録を残す。監査可能な記録が必要な場合はコミットし、それ以外はローカルに保持する。"],["a",5,"`figure-it-out` への振り分けを追加","","大規模・横断的な作業 (多数の呼び出し箇所の移行、野心的な複数部分の変更) や、ユーザーが離席して後で信頼する作業は、Feature 等が該当しそうでも `figure-it-out` に振り分ける。同梱のプレイブックが適合しない場合も `figure-it-out` を使用し、タスク専用のプレイブックを設計する。"]],"f18ffc1bd6":[["a",5,"`Refactoring` プレイブックを追加","","振る舞いを維持したまま構造や形を変更する作業 (rename、extract、inline、dedupe、move) を対象とする。手順は `playbooks/refactoring.md`。"]],"bbc0d75eb2":[["a",5,"`Trace forensics` プレイブックを追加","","事後に渡された取得済みのプロファイリング成果物 (cpuprofile、trace、spindump、heap snapshot) を診断する作業を対象とする。成果物は修正ではなく診断。手順は `playbooks/trace-forensics.md`。"],["a",5,"`Session pickup` プレイブックを追加","","トランスクリプト、クラウドエージェントの URL、push 済みブランチから、以前のエージェントの進行中の作業を再開・引き継ぐ作業を対象とする。手順は `playbooks/session-pickup.md`。"]],"7b1c32e4c3":[["a",1,"Core に `Build the Lever` を追加","","`principle-build-the-lever`。反復的・大量の作業に適用する。手順が判明した時点で、手作業を続けずに作業を償却する道具 (codemod、スクリプト、ジェネレーター) を作成する。"]],"ec44aed93c":[["c",3,"文章・判断用モデルを `claude-opus-4-8-thinking-xhigh` に変更","`Task` 呼び出しの既定モデルは、コードに `composer-2.5-fast`、文章と判断に `claude-opus-4-7-thinking-xhigh`。","文章と判断のモデルを `claude-opus-4-8-thinking-xhigh` に変更。コード用の `composer-2.5-fast` は変更なし。"]],"ba7781cce6":[["c",1,"`Build the Lever` の適用範囲を非自明な作業全般に拡大","反復的・大量の作業に適用し、手順が判明した時点で作業を償却する道具 (codemod、スクリプト、ジェネレーター) を作成する。","非自明な作業すべてに適用する。手作業ではなく、作業を実施するか証明する道具 (codemod、スクリプト、ジェネレーター) を作成する。その道具はレビュアーが再実行できる成果物とする。"]],"c532aa167c":[["a",4,"利用者と保守者への影響を示す規則を追加","","実装の詳細より先に、作業の対象者 (エンドユーザー、ライブラリを import する同僚) と、その人にとって何が変わるかを記載する。次に、このコードを引き継ぐ次の技術者が何を受け継ぐかを記載する。どちらが気付く変化も説明できない場合は、作業か説明に問題がある。"]],"f7e01457bb":[["c",6,"全体の文言の整理と短縮","原則の各項目は「The X skill. Apply when ...」の形式。返答規則・Autonomy・Playbooks 節に補足説明や重複文 (長いダッシュを使う理由、「理由付きの skip は可」、選択手順の再掲、各プレイブックの「Full steps:」) を含む。","原則の各項目を「名前 (スキル名). 適用場面. 動作」の形式に短縮し、適用場面を示す旨を節の冒頭に追加。補足説明と重複文を削除し、各節の文を短縮。指示の条件と動作は変更なし。"]],"2f3a47e6c4":[["a",5,"`Pause safely` プレイブックを追加","","明示的な一時停止、オフライン化、Cursor の再起動、間近のコンテキスト圧縮の際に、進行中の作業を再開可能な状態で中断する作業を対象とする。`Session pickup` と対をなす。手順は `playbooks/pause-safely.md`。"]],"97d645a601":[["a",0,"Bugbot 等のレビューコメントへの対応を追加","","Bugbot または agentic security reviewer がコメントした場合は懐疑的に対応する。実際のバグと同時に非問題や些末な指摘も出すため、各指摘を個別に評価し、ノイズは具体的な理由を付けて却下し、コードを無用に変更しない。修正・却下・質問の振り分けは `babysit` で実施する。"]],"6605d7adc3":[["c",3,"役割別モデルを `/setup-pstack` で設定可能に変更","`Task` 呼び出しはモデルを明示し、コードに `composer-2.5-fast`、文章と判断に `claude-opus-4-8-thinking-xhigh` を使用する。","役割ごとにモデルを明示し、そのモデルは `/setup-pstack` で設定可能とする。既定値はコードに `composer-2.5-fast`、文章と判断に `claude-opus-4-8-thinking-xhigh`。"],["c",6,"文言の整理","Bugbot の起動条件で「agentic security reviewer」と記載。","「agentic security review」に表記を変更。指示内容は変更なし。"]],"27daaa3091":[["a",1,"Verification に `Sequence Work into Verifiable Units` を追加","","`principle-sequence-verifiable-units`。多段階の作業 (一括修正、移行、類似編集の連続) と、コミット・PR の積み方に適用する。作業を検査で終わる小さな単位に分割し、各単位を検証してから次へ進み、順序自体が正しさを証明するように納品を並べる。"]],"318e8f74cc":[["a",0,"`AskQuestion` 前に問いを分類する規則を追加","","「どの方式か」「どうすべきか」「何をすべきか」の分岐で `AskQuestion` する前に問いを分類する。実行して観察できる事実 (振る舞い、時間、レイアウト、出力、性能、評価が差を示すか) は人に問わず、Prototype プレイブックで試作して結果で決定する。読み取り専用の Investigation では試作せず証拠から回答する。質問は、実験で決まらない製品判断・好みの判断に限定する。"],["c",5,"`Prototype` の対象に経験的な分岐の決着を追加","実装前に設計判断を安価に下すための使い捨ての試作 (「prototype」「mock it up」「try this layout」)。","設計または振る舞いの判断を安価に下すため、または人に問わず観察で経験的な分岐を決着させるための使い捨ての試作。起動語に「sketch it to decide」を追加。"]],"b64f02a456":[["a",5,"`Hillclimb` プレイブックを追加","","1 つの指標を目標に向けて継続的・科学的に改善する作業を対象とする。仮説を前後の計測、判断ログ、採用した改善ごとに 1 コミットで反復する。単発の修正である Perf issue とは区別する。手順は `playbooks/hillclimb.md`。"]],"dc2fae6625":[["c",3,"コード担当の既定モデルを `grok-4.5-fast-xhigh` へ変更","`Task` 呼び出しのモデルは役割ごとに明示し (`/setup-pstack` で設定可能)、既定はコードに `composer-2.5-fast`、文章と判断に `claude-opus-4-8-thinking-xhigh` を使用する。","コードの既定モデルを `grok-4.5-fast-xhigh` に変更する。文章と判断の既定 `claude-opus-4-8-thinking-xhigh` は維持する。"]],"9b80b53498":[["a",3,"最難度の変更を `claude-fable-5-thinking-max` へ振り分け","","最も難しい変更 (横断的な設計、複雑な並行処理、精妙なアルゴリズム、意図が曖昧なもの) は `claude-fable-5-thinking-max` に委任する。"]],"0dda29e839":[["a",6,"常駐モードとしての設定と表示属性を追加","","frontmatter に `mode: true` を追加し、poteto-mode を常駐 (sticky) モードにする。表示用に `icon: crown` と `color: yellow` を設定する。"],["a",0,"モード適用を判定する条件付きリマインダーを追加","","frontmatter の `reminder` で、新しいタスクがプレイブックに該当するか厳密さを要する場合は /poteto-mode を適用し、雑談的なターンやユーザーが不要と表明した場合は適用しないよう促す。"]],"a8145426e5":[["a",1,"`principle-model-the-domain` を Architecture に追加","","状態を持つロジック、分岐の多いコード、複数ファイルで同じ形状の前提を繰り返すコードを書く場合に適用する。散在する条件分岐の代わりに、状態機械・型付きモデル・表やレジストリ・reducer・境界・適切なコレクションなどの構造でドメインを表現する。"]],"9d2a3f2d12":[["c",6,"スキルの `name` を表示名 `Poteto Mode` へ変更","frontmatter の `name` は `poteto-mode`。","frontmatter の `name` を人が読む表示名 `Poteto Mode` に変更する。"]],"3fe2823ce1":[["c",0,"コード作成時に `principle-model-the-domain` で構造を選定","コードを書く場合は、最初にデータの形状を命名する。","コードを書く場合は、最初にデータの形状を命名し、その組織化の構造を **principle-model-the-domain** に従って選定する。"],["c",0,"`interrogate` の説明を multi-model へ修正","設計に異論がある場合は出荷前に **interrogate** スキル (four-model adversarial) を使用する。","同じ条件で **interrogate** スキルを使用し、説明を「multi-model adversarial」に修正する。"],["c",3,"コード委任を難易度で3段階に振り分け","最も難しい変更 (横断的な設計、複雑な並行処理、精妙なアルゴリズム、意図が曖昧なもの) は `claude-fable-5-thinking-max` に委任する。","コード委任を難易度で振り分ける。最難度の変更は、判断を要するか意図が曖昧なら最強の判断モデル (`claude-fable-5-thinking-max`)、厳密に指定された手順を文字どおり実行する作業なら最強の指示追従モデルへ委任し、自明な機械的編集は高速なコードモデルへ委任する。"],["a",3,"`/setup-pstack` の役割行による既定値の上書きを規定","","`/setup-pstack` ルールの役割ごとの行は、この既定値と、振り分け先スキル (`how`、`why`、`arena`、`architect`、`interrogate`、`reflect`) のモデル選択を上書きする。行のない役割は既定値を維持する。"]],"63432f3196":[["c",3,"モデル指定を `/setup-pstack` ルールの役割行に基づく方式へ変更","役割ごとにモデルを明示し (`/setup-pstack` で設定可能)、既定はコードに `grok-4.5-fast-xhigh`、文章と判断に `claude-opus-4-8-thinking-xhigh` を使用する。","`/setup-pstack` ルールから役割ごとのモデルを取得し、実在する識別子を `model` に渡す。役割の行がない場合は、コードに `grok-4.5-fast-xhigh`、文章と判断に `claude-opus-4-8-thinking-xhigh` を既定とする。"],["a",3,"`inherit-parent`/`auto` では `model` を省略","","役割の値が `inherit-parent` または `auto` の場合は `model` を省略し、サブエージェントに親チャットのモデルを継承させる。"]],"e1007b141f":[["c",3,"文章と判断の既定モデルを `claude-fable-5-thinking-max` へ変更","役割の行がない場合、文章と判断の既定は `claude-opus-4-8-thinking-xhigh`。","役割の行がない場合、文章と判断の既定を `claude-fable-5-thinking-max` に変更する。コードの既定 `grok-4.5-fast-xhigh` は維持する。"],["c",3,"最強の指示追従モデルに `gpt-5.6-sol-max` を明記","厳密に指定された手順を文字どおり実行する最難度の作業は、最強の指示追従モデルへ委任する (モデル名の指定なし)。","同じ作業の委任先として `gpt-5.6-sol-max` を明記する。"]],"04166ac891":[["c",3,"モデル解決の指示を役割行の定義へ集約","`/setup-pstack` ルールから役割ごとのモデルを取得し、実在する識別子を `model` に渡す。`inherit-parent`/`auto` の場合は `model` を省略し、役割の行がない場合は既定 (コードに `grok-4.5-fast-xhigh`、文章と判断に `claude-fable-5-thinking-max`) を使用する。","役割ごとにモデルを明示し (`/setup-pstack` で設定可能、既定は同じ2モデル)、実在する識別子を渡す指示は削除する。役割の行が `inherit-parent` または `auto` の場合は、その役割を親チャットのモデルで実行する (`Task` の `model` を省略) という定義を上書き規則の末尾に置く。"]],"b79f8ca89e":[["a",0,"並列展開を `swarm` へ、設計比較を `arena` へ振り分け","","並列展開 (カバレッジ行列、競争、ガントレット、探索の分割) には **swarm** スキルを使用する。基準案の選定と接ぎ木を伴う設計またはコードの比較には **arena** を使用する。"],["c",3,"役割行で上書きするスキルに `swarm` を追加","`/setup-pstack` の役割行は、`how`、`why`、`arena`、`architect`、`interrogate`、`reflect` のモデル選択を上書きする。","上書き対象に `swarm` を追加する。"]],"91dd7b7119":[["c",3,"独自の `subagent_type` を持つスキルに `swarm` を追加","振り分け先のワークフロースキル (`how`、`why`、`interrogate`、`reflect`) は多様なモデルによるレビューのため独自の `subagent_type` を設定し、`poteto-agent` で上書きしない。","同じ扱いの対象に `swarm` を追加する。"]],"b047069f4f":[["a",0,"文書類の作成を `technical-writing` へ振り分け","","ドキュメント、RFC、README、PR の説明、コミットメッセージを書く場合は **technical-writing** スキル (`/technical-writing`) を使用する。"],["a",0,"レビュー前に `no-comments` を実施","","レビューに出す前に **no-comments** スキル (`/no-comments`) を使用する。"],["a",5,"`Autopilot-full` プレイブックを追加","","独立した PR のキューを完全自律でマージまで進める場合に `playbooks/autopilot-full.md` を使用する。PR ごとに1人の担当がビルドからマージまで受け持ち、ルートがマージ可能な各 head を swarm で検証してから担当がマージする。"],["a",5,"`Autopilot-stack` プレイブックを追加","","変更のキューを完全自律で構築・検証し、運用者が自分でマージする1本の直線的なレビュー済み Graphite スタックとして納品する場合に `playbooks/autopilot-stack.md` を使用する。"]],"99559f2f52":[["c",0,"PR 状況の依頼を `Babysit` プレイブックへ振り分け","PR を開いた後は Cursor 組み込みの **babysit** スキルを使用する。","PR の状況に関する依頼 (「babysit this」「get it green」「bugbot のコメントに対応」「check on PR X」など) は、組み込みの babysit スキルではなく **Babysit** プレイブック (`playbooks/babysit.md`) を使用する。PR を開いただけでは起動しない。ポーリング前にモードを宣言し、フェーズエージェント内で `drive` を使用しない (ターンを完了できなくなるため)。"],["a",0,"グリーンのスタックの出荷を `Shipping` へ振り分け","","グリーンのスタックのマージや出荷を依頼された場合は **Shipping** プレイブック (`playbooks/shipping.md`) を使用する。グリーンでも安全とみなさず、PR ごとの独立した判定の前には何も有効化せず、ルートから連続して検証済みの範囲だけをマージする。"],["c",0,"Bugbot 指摘の選別基準を `references/bugbot-triage.md` へ変更","Bugbot やエージェントによるセキュリティレビューの指摘は、組み込みの **babysit** スキルで修正・却下・質問に選別する。","同じ指摘の選別を `references/bugbot-triage.md` に従って実施する。指摘を懐疑的に評価し、雑音は具体的な理由を付けて却下する姿勢は維持する。"],["a",5,"常設の大規模プログラムを `Orchestrate` へ振り分け","","常設のプロジェクト規模のプログラム (複数日、多数のスタック PR、1人の調整役の下のサブエージェント群) は figure-it-out ではなく **Orchestrate** へ振り分ける。figure-it-out は1回の専用の実行を設計し、orchestrate はプログラムを運用する。"],["a",5,"`Babysit` プレイブックを追加","","PR またはスタックをマージ可能な状態 (競合、レビューのスレッド、CI) まで進める場合に `playbooks/babysit.md` を使用する。"],["a",5,"`Shipping` プレイブックを追加","","Babysit の後半として、グリーンのスタックを独立に検証し、連続して検証済みの範囲を Graphite の merge-when-ready でマージする場合に `playbooks/shipping.md` を使用する。"],["a",5,"`Orchestrate` プレイブックを追加","","1つの調整役チャットに委ねる常設プロジェクト (複数日、多数のスタック PR、数十から数百のサブエージェント、最小限の人の介入) に `playbooks/orchestrate.md` を使用する。1つのエージェントがセッションの予算内で完了できる作業は、表現がプログラム風でも Autonomous run へ振り分ける。"],["a",5,"`Worktree and simulator cleanup` プレイブックを追加","","マージ済みや放棄された git worktree と古い iOS シミュレーターを削除してローカルのディスクを回収する場合 (「clean up worktrees」「free up space」など) に `playbooks/worktree-cleanup.md` を使用する。"]],"63d938c2e4":[["c",3,"コード用の既定モデルを `grok-4.6-fast-xhigh` へ変更","Task 呼び出しの既定モデルは、コード用が `grok-4.5-fast-xhigh`、文章と判断用が `claude-fable-5-thinking-max`。","コード用の既定モデルを `grok-4.6-fast-xhigh` に変更。文章と判断用は `claude-fable-5-thinking-max` のまま。"]],"23a56e2dac":[["c",3,"判断用モデルを `claude-fable-5-1-thinking-max` へ変更","文章と判断用の既定モデル、および最難度の変更のうち判断を要する・意図が曖昧なものの委任先は `claude-fable-5-thinking-max`。","文章と判断用の既定モデル、および最難度の変更のうち判断を要する・意図が曖昧なものの委任先を `claude-fable-5-1-thinking-max` に変更。"],["c",3,"厳密な手順実行の委任先を `claude-fable-5-1-thinking-max` へ変更","最難度の変更のうち、厳密に指定された手順を文字どおり実行する作業は、指示追従が最も強いモデル `gpt-5.6-sol-max` へ委任する。","同じ作業の委任先 (指示追従が最も強いモデル) を `claude-fable-5-1-thinking-max` に変更。"],["c",5,"`Shipping` のマージ手段を `gh` または Origin へ変更","Shipping は、緑のスタックを独立に検証し、検証済みの連続範囲を Graphite の merge-when-ready でマージする。","検証済みの連続範囲を下から順に、既定では `gh` で、Origin の CLI が利用可能な場合は Origin でマージする。"],["c",5,"`Autopilot-stack` の成果物を base-branch スタックへ変更","Autopilot-stack は、変更のキューを完全自律で構築・検証し、運用者が自身でマージする線形のレビュー済み Graphite スタックとして納品する。","納品形式を線形のレビュー済み base-branch スタックに変更。運用者が自身でマージする点は同じ。"]],"e8d856f027":[["d",6,"Principles 精読を todolist の先頭項目とする指示を削除","複数手順の作業は、先頭項目を「Principles 節を全文読む」とする todolist で開始する。",""],["c",4,"原則の引用条件を「本セッションで読んだ個別スキルのみ」へ変更","返答では判断に影響した原則とその判断を挙げる。判断を伴わない引用は個別スキルを読み飛ばした証拠とみなし、個別スキルの規則が導いた実際の選択に結び付ける。","返答では判断に影響した原則とその判断を挙げる。引用できるのは、本セッションで個別スキルの SKILL.md を読んだ原則に限定する。"],["a",1,"`principle-attack-the-premise` を追加","","前提を共有する修正が 2 件以上同じ関門で失敗した場合に適用。次の修正の前に不均衡を抱える主体を集計し、前提を疑う。前提に依存する修正を追加しない。"],["a",1,"`principle-test-behavior-not-implementation` を追加","","テストの作成・変更・維持時に適用。利用者と同じ方法でコードを呼び出し、結果をリテラルの期待値と照合する。インポートした関数がすべて `undefined` を返しても通るテストは、アサーションを書き直すか削除する。"],["c",3,"最難度の変更の委任先区分を判断用モデルへ統合","最難度の変更は、判断を要する・意図が曖昧な場合は最も強い判断用モデル、厳密な手順の実行は最も強い指示追従モデルへ委任する (どちらも `claude-fable-5-1-thinking-max`)。","判断を要する曖昧な作業か厳密な手順の実行かを問わず、最も強い判断用モデル `claude-fable-5-1-thinking-max` へ委任する。指示追従モデルの区分を削除。"],["c",5,"todolist の開始時期の制約と無言スキップ禁止の明記を削除","最初の todolist 項目は該当プレイブックの手順の逐語複製とし、タスク固有の項目より前、かつタスクについて推論する前に記載する。手順を省略する場合は `skip: \u003c理由>` を残し、無言の省略は禁止と明記。","該当プレイブックの手順を逐語で先頭に置いた todolist を、タスク固有の項目より前に作成する。省略する手順は `skip: \u003c理由>` を残す。「推論する前」の条件と無言省略の禁止文を削除。"],["c",6,"文言の整理","AskQuestion 指示に「質問は遅い経路で、使い捨ての検証の方が速い」という理由文がある。返答節に「事後の清書は失敗すると計測済み」、長いダッシュ禁止に「2 つの事例」の前置き、コメント節に「一律禁止では防げない」「Delete it」の説明がある。","理由文と前置きを削除・短縮。長いダッシュ禁止、ファイル一覧の書き方、太字見出しの書き方、コメントは非自明な理由のみ・検証スクリプトに段階説明コメントを書かない、という指示の内容は維持。"]],"d7cde2b84e":[["c",6,"文言の整理 (セミコロンを句点へ置換)","起動条件、Build the Lever、サブエージェント、プレイブックの各箇所で、文をセミコロンで連結。","セミコロンを句点に置換して文を分割。指示の内容に変化なし。"]],"f8abeddd18":[["a",4,"主張ごとに根拠またはラベルを同じ文で明示する指示を追加","","各主張は同じ文の中に根拠か、計測・推論・推測のラベルを付ける。予測や未確認の原因は推測とする。自分で実行できる確認を人間に依頼しない。"]],"f5bdd6826f":[["c",6,"文言の整理 (`Autopilot-stack` の代名詞を削除)","`Autopilot-stack` の説明で、スタックをマージする運用者を「herself」と記載。","「herself」を削除。運用者がマージする点は同じ。"]],"70b2dc8b4b":[["a",2,"完全自律の委任下での判断と既定値の適用規則を追加","","完全自律の委任下では、委任範囲の判断は自身で決定・実行し、返答語や提案を付けずに報告する。運用者だけが決定できる判断には既定値を適用し、詳細な説明と取り消すための 1 語を添えて報告する。運用者が指定した関門と Autonomy の Always-pause 一覧は引き続き運用者の判断を要する。"],["c",3,"コード用の既定モデルを `grok-4.7-xhigh-fast` へ変更","コード用の既定モデルは `grok-4.6-fast-xhigh`。","コード用の既定モデルを `grok-4.7-xhigh-fast` に変更。"],["c",3,"判断用モデルを `claude-opus-5-5-max` へ変更","文章と判断用の既定モデル、および最難度の変更の委任先は `claude-fable-5-1-thinking-max`。","文章と判断用の既定モデル、および最難度の変更の委任先を `claude-opus-5-5-max` に変更。"],["c",5,"`Autopilot-full` の検証対象を各 PR へ変更","root は、マージ可能になった各ヘッドを swarm で検証してから、担当者がマージする。","root は各 PR を swarm で検証してから、担当者がマージする。"]],"12d587dfb2":[["a",3,"プレイブック別のモデル設定行の参照規則を追加","","コード系プレイブックの設定モデルは `/setup-pstack` の該当行 (`feature, refactoring`、`bug-fix`、`perf-issue`、`hillclimb`) から取得し、最難度の変更は `hardest tasks` 行を参照する。文章と判断は `judgment and prose` 行を参照する。"]],"23e4138daa":[["c",2,"完全自律下の既定値の報告方法を変更","完全自律の許可下で運用者だけが決定できる判断には既定値を適用し、全説明と、それを取り消す1語を添えて報告する。","完全自律の許可下で運用者だけが決定できる判断には既定値を適用し、全説明と、代わりに指示できる内容を平易な言葉で添えて報告する。運用者は自分の言葉で回答するため、返信用の短縮トークンは提示しない。"],["a",0,"計測時に `benchmark-checklist` を使用","","ベンチマークの実行、自身による性能計測、または計測した高速化・劣化の報告時は、その数値を報告・利用する前に `benchmark-checklist` スキルを使用する。"],["a",1,"`principle-explain-the-number` を追加","","Verification に Explain the Number を追加。計測した数値（高速化、劣化、スループット、レイテンシ、eval 結果）を信頼・報告・利用する前に、数値を制約する要因を特定し、想定と異なる作業を計測した可能性を排除する。"],["a",3,"新規作業は新しいサブエージェントへ委任","割り込みで連鎖した再開は指示を欠落させるため、「完了」の要約を信頼せず、統合した範囲で新しいサブエージェントを起動する。","修正ラウンド、追加作業、再試行、キューの次項目を含む新規作業は、元の指示、以後の全指示、前エージェントの報告とブランチを統合した範囲で新しいサブエージェントへ渡す。既存サブエージェントの再利用は、ローカルの checkout、未コミットの変更、実行中のプロセス（dev server、シミュレータ、babysit の監視）など移動の困難な状態が必須の場合に限定する。停止・保留の指示は再利用に該当せず、PR owner などの役割は、担当エージェントの返答後に新しいエージェントが次のラウンドを担当する。"]],"df581122cd":[["c",3,"判断用の既定モデルを変更","文章と判断の既定モデル、および最難の変更の委任先を `claude-opus-5-5-max` とする。","文章と判断の既定モデル、および最難の変更の委任先を `claude-opus-5-5-xhigh` とする。"]],"00b14f1df3":[["c",1,"原則のスキル名を命名規則へ置換","各原則の項目に対応する個別スキル名（例: `principle-laziness-protocol`）を個別に併記する。","各項目は題のみを記載し、個別スキルは題を kebab case 化した `principle-\u003ctitle>`（ハイフンは保持し、その他の記号は除外）とする規則を追加。規則と異なる名前の項目だけ名前を併記する（Sequence Work into Verifiable Units の `principle-sequence-verifiable-units`）。"],["c",5,"プレイブックのファイルパスを命名規則へ置換","各プレイブックの項目に `playbooks/\u003cfile>.md` のパスを個別に併記する。","全手順は題を kebab case 化した `playbooks/\u003ctitle>.md`（ハイフンは保持し、その他の記号は除外）で開く規則を追加。規則と異なる項目だけファイルを併記する（`playbooks/authoring-a-skill.md`、`playbooks/multi-phase-plan.md`、`playbooks/worktree-cleanup.md`）。"],["c",6,"文言の整理","`AskQuestion` の起動条件、文章面（prose surface）の起動条件、Babysit の起動条件、返答節のプレイブック別の行への参照を、それぞれ冗長な文で記載する。","`AskQuestion` の文を圧縮し、文章面の起動条件に「ユーザーへの返答を含む」を条件側へ記載し、Babysit の依頼例を条件側の括弧内へ移動する。返答節の参照は「下記のプレイブック別の行」から「各プレイブック自身の返答の行」へ変更する。指示の内容は不変。"]],"2bd5dd4f22":[["a",3,"プレイブックは受信したチャットが実行","","`/poteto-mode` を受信したチャット自身がプレイブックを実行する。プレイブック自体を実行させる目的で `poteto-agent` を起動しない。"]],"364a77eb35":[["a",3,"`poteto-agent` へ本ファイルの絶対パスを渡す","","同梱スキルは本ファイルから見て `../\u003cname>/SKILL.md` に配置されるため、すべての `poteto-agent` へのプロンプトに本ファイルの絶対パスを記載する。"]],"b93e811788":[["d",0,"frontmatter の `reminder` を削除","frontmatter の `reminder` で、新規タスクでプレイブックが一致するか厳密さが必要な場合は /poteto-mode を適用し、雑談やユーザーが不要とした場合は適用しないと指示する。",""],["d",6,"frontmatter の `mode: true` を削除","frontmatter に `mode: true` を記載する。",""]],"ce649c03ac":[["d",3,"共通ラッパーの説明を削除","`/poteto-mode` と `poteto-agent` は同じラッパーを経由すると記載する。",""],["a",3,"仕事に応じたモデル調整を追加","","起動ごとに役割の設定行または既定値から推論レベルと速度を選択する。開始レベルは `/setup-pstack` の予算（既定 xhigh）とし、最難の作業は1段階上げ（上限 max）、判断は1段階、定型作業は2段階以上下げる。fast は CI・trunk の失敗や人が結果を待つ緊急時のみ使用し、それ以外は `-fast` なしの識別子とする。検証は例外で `swarm workers` のモデルと速度（既定 `grok-4.7-xhigh-fast`）を維持する。変更するのは推論レベルと fast の有無のみで、役割のモデル系統は維持し、該当識別子がなければ最も近い識別子を使用する。`auto` / `inherit-parent` は親モデルのままとし、Task ツールが調整後の識別子を拒否した場合は別の調整を試さず、役割の設定行または既定値を使用してその旨を報告する。"]],"e5136d8241":[["c",1,"`principle-attack-the-premise` の要約を変更","前提を共有する修正が2件以上同じ関門で失敗した場合、次の修正の前に不均衡を保持するアクターを網羅的に調査し、その前提を疑う。","前提を共有する修正が2件以上同じ関門で失敗した場合、その前提を書き出して直接検証してから、前提に依存する次の修正を作成する。"],["c",1,"`principle-fix-root-causes` の要約を変更","デバッグ時は各症状を根本原因まで追跡し、先に再現し、原因に到達するまで「なぜ」を繰り返す。","デバッグ時は各症状を、システムが最初に誤った箇所まで遡ってそこで修正する。ガードは、扱う状態が正当な場合に限り修正とみなす。"],["c",1,"`principle-test-behavior-not-implementation` の要約を変更","利用者と同じ方法でコードを呼び出し、結果をリテラルの期待値と比較する。全 import が `undefined` を返しても通過するテストは、assertion を書き直すか削除する。","コードの利用者が観測できる内容を assert し、その振る舞いが壊れると失敗し、内部実装の変更だけでは通過し続けるテストにする。"]],"a968159326":[["c",6,"frontmatter の `name` を変更","frontmatter の `name` を `Poteto Mode` とする。","frontmatter の `name` を `poteto-mode` とする。"]],"ab1f702ce8":[["a",4,"最初の返答で目的と最小変更を提示","","タスクの最初のメッセージで、ユーザーの目的、解決する問題、変更を出荷するタスクではそれを満たす最小の変更を自分の言葉で示し、確認を待たずに進める。証拠が依頼された変更を否定する場合は、それを提示して停止する。ユーザーの目的をサブエージェントへの指示、各 PR の `## Why` の冒頭、最終返答を含む各最終報告の冒頭に記載する（完全に指定された1行の編集の後は除外）。"],["c",1,"`principle-explain-the-number` の適用時点を拡大","計測した数値を信頼・報告・利用する前に適用する。","計測の前にも適用し、加えて計測した数値を信頼・報告・利用する前に適用する。"],["c",3,"実行中エージェントへの指示もバックグラウンド化","すべての `Task` 呼び出しで `run_in_background: true` とする。","実行中エージェントへの方針指示や再開の呼び出しも `run_in_background: true` とする。前面の呼び出しはほかの報告が待機する間もターンを占有するため。"],["c",3,"識別子拒否時のフォールバックを詳細化","Task ツールが調整後の識別子を拒否した場合は、役割の設定行または既定値を使用してその旨を報告する。","それも拒否された場合は呼び出し元スキルのフォールバックへ進む。モデルが無効とするエラーか、有効な識別子一覧に含まれない場合を拒否とみなし、拒否済みの識別子は再使用せずフォールバックでも除外する。呼び出し元にフォールバックがない場合はエラーの一覧から役割の系統で最も近い有効な識別子を使用し、一覧がない場合やフォールバックが次の手順を示さずに尽きた場合は `model` を省略して親モデルで実行し、その旨を報告する。"],["c",5,"`Autopilot-stack` の定義を変更","全自律で構築・検証した変更のキューを、運用者がマージする1本の線形のレビュー済みベースブランチのスタックとして納品する。","マージしない Autopilot-full と定義し、全自律で構築・検証した PR のキューを運用者へ渡してマージさせる。PR は依存する PR の上にだけ積む。起動語に「autopilot, don't merge」を追加。"]],"bf0c7cd80a":[["d",0,"`how` の起動条件を削除","単純ではない変更、アーキテクチャの判断、「本当に大丈夫か」という問い → `how`","起動条件なし。`/poteto-mode` と配下のスキルはコードを直接追跡する。`/how` は利用者が自分で呼び出すスキルとして残存する。"],["c",3,"独自の `subagent_type` を持つスキルから `how`・`why` を除外","`how`・`why`・`interrogate`・`reflect`・`swarm`","`interrogate`・`reflect`・`swarm`。`/setup-pstack` がモデル選択を上書きするスキルの一覧も `arena`・`swarm`・`architect`・`interrogate`・`reflect` に変更。"],["c",3,"既定モデルを Fable 5.2・Opus 5.5・Gemini 4 Carbon へ変更","`hardest tasks` は `claude-opus-5-5-xhigh`。`feature, refactoring · bug-fix · perf-issue · hillclimb` は `grok-4.7-xhigh-fast`。`swarm workers · reflect tooling · 検証 · 単純な機械的変更` は `grok-4.7-xhigh-fast`。`arena runners · arena cross-judge pool · architect runners · interrogate reviewers` は `claude-opus-5-5-xhigh`、`grok-4.7-xhigh-fast`。","`hardest tasks` は `claude-fable-5-2-max`。`feature, refactoring · bug-fix · perf-issue · hillclimb` は `claude-opus-5-5-xhigh`。`swarm workers · reflect tooling · 検証 · 単純な機械的変更` は `claude-opus-5-5-high-fast`。`arena runners · arena cross-judge pool · architect runners · interrogate reviewers` は `claude-fable-5-2-high`、`claude-opus-5-5-high-fast`、`gemini-4-carbon-high`。Grok 4.7 は既定から除外。役割の名前と4段階の予算は維持され、既存の `pstack-models.mdc` はそのまま動作する。"],["a",3,"旧版の setup が出力したルールを検出","","ルールに `# defaults: 2` の行がなければ、旧版の setup が出力したものと判定する。既存の行は維持し、`/setup-pstack` の再実行をセッションに1回案内する。"],["a",3,"モデル系列ごとの制約を追加","開始レベルの既定は xhigh。","開始レベルの既定は xhigh または high、`hardest tasks` は max。Fable（`claude-fable-*`）は、ほかの Claude モデルと別の系列。Gemini には xhigh・max・fast の識別子がなく、high 以上が必要な仕事は high で実行する。Fable 5.2 には fast の識別子がなく、緊急時も標準速度でレベルを維持する。"],["c",7,"プレイブック6件: `how` の実行をコードの追跡へ変更","Investigation 1・3、Feature 1、Bug fix 2、Hillclimb 1、Perf issue 2、Refactoring 1 が `how` を実行。","各ステップは対象のコード・サブシステムを直接追跡する。Investigation の出力の構成（Overview / Key Concepts / How It Works / Where Things Live / Gotchas）は維持。Multi-phase plan の読書リストから `how` を削除。"],["c",7,"プレイブックの「(default …)」の記載を新しい既定モデルへ変更","feature・bug-fix・perf-issue・hillclimb・refactoring は `grok-4.7-xhigh-fast`。Multi-phase plan の `swarm workers` も同じ。","コード用の5件は `claude-opus-5-5-xhigh`。Multi-phase plan の `swarm workers` は `claude-opus-5-5-high-fast`。"],["c",7,"`/how` を1ファイルへ縮小","モデルの振り分け、複雑度の判定、explorer、出力形式、プロンプトのテンプレート2件を保持。","読み取り専用のサブエージェント1件を3文の指示で起動し、出力を提示する。固定の見出しと役割別のモデルは廃止。`/teach` は引き続き `/how` を実行する。"],["c",7,"`/why` を1ファイルへ縮小（本文48語、情報源とツールの名前なし）","investigator、synthesizer、モデルの振り分け、出力形式、`references/` 配下の12ファイルを保持。接続済みの情報源を順に検索。","コードではなく記録から回答する。対象を導入したコミットとPRの議論、その後の各変更を起点とし、痕跡が薄い場合だけほかの情報源を参照する。著者の記載を引用し、自分の推論を明示し、記録が答えない点を述べる。"],["c",7,"`recall`・`blast-radius`・`teach`: `why` の削除箇所への依存を解消","`recall` は `why` の investigator と情報源別の手順を借用。","`recall` は情報源ごとに自前の investigator を起動する。`blast-radius` と `teach` は `why` の削除済みの箇所（ステップ2、規則、全件探索と絞り込みの助言）を参照しない。"],["c",7,"`/setup-pstack`: `how`・`why` の役割を廃止、`# defaults: 2` を出力","`how explorer`・`how explainer`・`why investigators`・`why synthesizer` の役割を保持。役割の既定はすべて xhigh。","4つの役割を廃止。残存する行は次回の実行で削除される。`# defaults: 2` の行を出力する。予算は役割ごとの既定の推論レベルを基準とし、`large` は維持、`unlimited` は1段階上、`medium` は1段階下、`small` は2段階下。"],["a",7,"`/setup-pstack`: 旧既定値の移行規則","","`# defaults: 2` のないルールに対し、次回の実行で適用する。旧既定が Grok 4.7 だった役割の `grok-*` は新しい既定へ。`hardest tasks` の `claude-opus-*` は新しい既定へ。`claude-opus-*` と `grok-*` 各1件だけのパネルは新しい3席へ。それ以外のパネルの `grok-*` は `claude-opus-5-5-high-fast` へ。ほかの値、`inherit-parent`、`auto` は維持。"],["c",7,"`arena` の cross-judge: 親と同じベンダーを除外","","judge は親チャットのベンダー以外から選択する。Fable とほかの Claude モデルは同一のベンダーとして扱う。既定のプールでは、Claude の親は `gemini-4-carbon-high` を使用し、拒否された場合は judge を省略する。ほかのベンダーの親は `claude-fable-5-2-high` を優先する。"],["c",7,"`/sharpen`: 実験で決着できる選択は試作を要求","書き換え後のプロンプトは、すべての選択を未決のまま残す。","書き換え後のプロンプトは、実験で決着できる選択を試作し、観察結果から選択肢を推薦するようエージェントへ求める。実験で決着できない製品判断と好みは利用者に残す。"],["c",7,"`/reflect`: synthesizer の例を関数名の変更へ差し替え","陳腐化する詳細の例がモデル名の変更。","例は関数名の変更（`parseConfig` → `loadConfig`）。"],["c",7,"`/statechart`: SANY が仕様を読めない場合に行と列を報告","エラーは SANY の XML 実行の末尾（Java のスタックトレース）。","最初の実行が失敗すると SANY を plain モードで再実行し、`*** Errors`・`*** Abort messages`・`*** Parse Error` の行から始まるエラー部分を報告する。上限は40行。再実行できない場合は従来の末尾へ戻る。"],["c",7,"`/statechart`: 親状態への矢印を境界で終端","外部から内部の状態への矢印が、親状態のタイトルを横切る場合がある。","入口が1つの親状態では、外部からの矢印は親の境界で終端し、親の開始マーカーから内部の状態へ接続する。2つ以上の状態から入る親は対象外。コーパスでは Login の図だけが変化する。"],["c",7,"`no-comments`・`comment-sicko`・Benny: `how` の実行を追跡へ変更","","`no-comments` と `comment-sicko` はシンボルを追跡するか `/why` を実行する。Benny の triage と reproduce は経路を自分で追跡し、対象リポジトリが解決すべき pstack スキルの一覧から `how` を除外する。`why` は引き続き使用する。"],["c",7,"Claude Code 向けの対応表を更新","","`claude-opus-5-5-high-fast` は `opus high`、`claude-fable-5-2-max` は `fable max`、`gemini-4-carbon-high` は `inherit-parent`。"],["c",7,"README とガイド（01・02・03・04・10）を新しい流れへ更新","","既定のモデル構成、`/why` と `/how` の説明、`/sharpen` の最終行の説明を更新。プラグインバージョンは 0.15.42。"]],"2f87c854fe":[["c",0,"最初のメッセージの規定を短縮","タスクの最初のメッセージで、ユーザーの目的、解決する問題、変更を出荷するタスクではそれを満たす最小の変更を自分の言葉で伝え、確認を待たずに進める。証拠が依頼された変更を否定する場合は、それを提示して停止する。目的を各サブエージェントへの指示で再掲し、各 PR の `## Why` と、最終返答を含む各最終報告を目的から開始する（完全に指定された1行の編集の後は除外）。","最初のメッセージで、ユーザーの目的と、それを満たす最小の変更を再掲して進める。各サブエージェントへの指示、PR の `## Why`、最終報告を目的から開始する。証拠が変更を否定する場合の停止と、1行の編集の除外は削除。"],["a",0,"起動するエージェントのキックオフの1行目で `worker.md` を指定","","Task のサブエージェントか Project worker を起動する場合は、キックオフの1行目を `Read \u003cpath>/worker.md before anything else.`（`\u003cpath>` はこのスキルのフォルダの絶対パス）とする。運用者の規則はスラッシュコマンドからだけ読み込まれるスキルにあり、ほかに別のエージェントへ届く経路がないため。キックオフの残りは目的とタスクに限定し、`poteto-agent` にはこのファイルの絶対パスを追加する。"],["c",0,"質問の前の分類を、実行で決着できる分岐の試作へ短縮","「どの方法か」「どうすべきか」「何をすべきか」の分岐で `AskQuestion` する前に分類する。実行して観察できる事実は Prototype プレイブックで試作して結果で決定する。出典付きの回答が成果物の読み取り専用の Investigation では証拠から回答し、質問は実験で決着できない製品判断・好みに限定する。完全な自律実行の許可の下では、許可の範囲の判断は自分で決定して報告し、運用者しか決定できない判断は既定値を適用して報告する。運用者が明示した承認条件と Always pause の一覧は運用者の確認を要する。","実行して決着できる分岐は、質問せずに `playbooks/prototype.md` に従って試作する。分類の手順、Investigation の例外、質問を製品判断・好みに限定する規定、完全な自律実行の許可の下での規定は削除。"],["c",0,"コードの起動条件を1行へ集約","コード全般では最初にデータの形を明示し、構成を **principle-model-the-domain** に従って選択する。関数の境界をまたぐコードは、実装前に **architect** で設計を並行して検討する。並列展開（網羅性の行列、競争、多段階の評価、探索の分割）は **swarm**、土台の選択と接ぎ木を伴う設計・コードの比較は **arena**、議論のある設計はリリース前に **interrogate** を使用する。","コードでは最初にデータの形を明示する。関数の境界をまたぐ場合は **architect**、並列展開（fan-out）は **swarm**、比較（bakeoff）は **arena**、議論のある設計は **interrogate**。principle-model-the-domain の参照、architect での並行した設計の検討、各スキルの用途の説明、interrogate の「リリース前」は削除。"],["d",0,"スループットの確認項目の起動条件を削除","単純ではない多段階の作業では、スループットの確認項目を記述する（Feature のステップ3）。",""],["c",0,"文章の起動条件を短縮","ユーザーへの返答を含む全ての文章で **unslop** を使用し、返答は「Writing the reply」に従う。エージェント向けの文章は **create-skill** にも従う。ドキュメント・RFC・README・PR 説明・コミットメッセージは **technical-writing** を使用する。","返答を含む文章は **unslop**。ドキュメント・PR 説明・コミットメッセージは **technical-writing**。create-skill の参照と、RFC・README の列挙は削除。"],["c",0,"UI・IDE・CLI の起動条件を短縮","UI・IDE・CLI の出荷では、該当する control スキルを使用する。`control-cli` は CLI・TUI、`control-ui` はブラウザ・Electron・Web UI が対象。バグ修正は自分で同じ操作面から先に再現し、利用者への引き渡しは Bug fix のステップ1の限定的な例外に限定する。","UI・IDE・CLI の出荷では、`cursor-team-kit` の `control-ui` か `control-cli` を使用する。対象ごとの対応と、バグ修正の再現と引き渡しの規定は削除。"],["c",0,"測定した数値の起動条件を短縮","ベンチマークの実行、自分での性能測定、測定した高速化・劣化の報告では、数値を報告・利用する前に **benchmark-checklist** を使用する。","測定した数値は **benchmark-checklist**。「報告・利用する前」の時点の指定は削除。"],["c",0,"PR の状況と green のスタックの起動条件を短縮","PR の状況の依頼（「babysit this」「get it green」「address the bugbot comments」「check on PR X」「anything outstanding on X」）は、Cursor 組み込みの babysit スキルではなく **Babysit** プレイブックを使用する。PR を開いただけでは起動せず、ポーリングの前にモードを宣言する。フェーズ担当エージェントの内部で `drive` を使用するとターンを完了できない。green のスタックのマージ・リリースの依頼は **Shipping** で、各 PR への独立した判定の前には何も arm せず、根元から連続して検証済みの範囲だけをマージする。","PR の状況は、Cursor 組み込みの babysit スキルではなく **Babysit** プレイブック。green のスタックのマージは **Shipping** プレイブック。依頼の例、起動しない場合、モードの宣言、`drive`、Shipping の判定とマージの範囲の規定は削除。"],["c",0,"ボットのレビューコメントの起動条件を短縮","Bugbot やエージェントのセキュリティレビューのコメントは懐疑的な姿勢で、各コメントを内容で評価し、ノイズは具体的な理由を付けて却下する。`references/bugbot-triage.md` に従って修正・却下・質問に分類する。","ボットのレビューコメントは、各コメントを内容で判断する。`references/bugbot-triage.md` の参照と、修正・却下・質問の分類は削除。"],["d",0,"壊れたスキルの起動条件を削除","作業中に壊れたスキルを発見した場合は、別の PR で修正する。作業を止めず、黙って回避しない。",""],["c",0,"長時間・不在の作業の起動条件を短縮","長時間・自律・複数フェーズの作業と、利用者が不在の間に進行させ後で確認する作業（「going to bed」「trust it when i'm back」「/loop until X」）は、**show-me-your-work** で判断の記録を残す。監査可能な記録が必要な重要度ではコミットし、それ以外はローカルに保存する。","長時間・不在の作業は **show-me-your-work**。依頼の例と、記録のコミット・ローカル保存の規定は削除。"],["c",0,"文言の整理","起動条件の一覧の前置きは「Remaining triggers:」。コミット前は「`cursor-team-kit` プラグインの `deslop` スキル（`/deslop`）」、レビュー前は別の行で「**no-comments** スキル（`/no-comments`）」。","前置きは「The remaining triggers live only here:」。コミット前とレビュー前を1行に集約し、「`cursor-team-kit` の `/deslop`」「**no-comments**」と記載する。"],["c",3,"`poteto-agent` の対象を直接起動するサブエージェントに限定し、`reflect` を除外","プレイブックのステップ内で起動するサブエージェント（コードを書く委任先、臨時の補助）は `poteto-agent` とする。`/poteto-mode` を受けたチャットがプレイブックを実行し、`poteto-agent` にプレイブック自体を実行させない。`interrogate`・`reflect`・`swarm` は各スキルが指定する `subagent_type` に従う。","プレイブックのステップ内で直接起動するサブエージェントは `poteto-agent` とする。`/poteto-mode` を受けたチャット自身がプレイブックを実行する。`interrogate`・`swarm` は各スキルが指定する `subagent_type` に従う。"],["c",3,"既定モデルを Opus 5.5 の `-fast` へ変更し、`hardest tasks` を廃止","コード・文章・判断の既定は `claude-opus-5-5-xhigh`。最難関の変更（横断的な設計、難しい並行処理、繊細なアルゴリズム）は `hardest tasks` のモデル（既定 `claude-fable-5-2-max`）。単純な機械的変更は `swarm workers` のモデル（既定 `claude-opus-5-5-high-fast`）。","コード・文章・判断の既定は `claude-opus-5-5-xhigh-fast`、単純な機械的変更は `claude-opus-5-5-high-fast`、パネルは `claude-fable-5-2-high`・`claude-opus-5-5-high-fast`・`gemini-4-carbon-high` の各1席。`hardest tasks` の役割は削除。"],["c",3,"`Task` の既定と `/setup-pstack` のルールの記載を変更","`run_in_background: true` は実行中のエージェントへの指示変更・再開にも適用する。`/setup-pstack` のルールの役割ごとの行は、既定値と `arena`・`swarm`・`architect`・`interrogate`・`reflect` のモデル選択を上書きする。`inherit-parent`・`auto` の役割は Task の `model` を省略して親モデルで実行する。`# defaults: 2` の行がないルールは旧版。","役割ごとのモデル明示は Project worker にも適用する。`/setup-pstack` は `~/.cursor/rules/pstack-models.mdc` を出力し、その役割ごとの行が既定値と `arena`・`swarm`・`interrogate` の役割のモデルを上書きする。`inherit-parent`・`auto` の役割は `model` を省略して `generalPurpose` を起動する（`poteto-agent` の既定は Opus 5.5 のため）。単純な機械的変更は `swarm workers` の行を参照する。`# defaults: 3` の行がないルールは旧版。実行中のエージェントへの指示変更・再開の記載は削除。"],["a",3,"Fable 5.2 をパネル以外では例外とする","","Fable 5.2 は、ユーザーがこのタスクに指定した場合か、同じ指示での Opus 5.5 xhigh の2回の実行が確認に失敗した場合だけ、パネル以外で実行する。どちらに該当するかを明示する。難しさだけでは該当しない。"],["c",3,"推論レベルの上限を xhigh とし、Opus 5.5 は常に `-fast`","起動ごとに役割の行または既定値から推論レベルと速度を選択する。開始レベルは `/setup-pstack` の予算（既定は xhigh か high、`hardest tasks` は max）。最難関の仕事は1段階上げ（上限 max）、判断は1段階、定型作業は2段階以上下げる。fast は CI・trunk の破損か人が結果待ちの場合だけ使用する。検証は `swarm workers` のモデルと速度を維持する。系列は維持し、Fable はほかの Claude と別の系列。Gemini は high 以上の仕事を high で実行し、緊急の Fable 5.2 は標準速度でレベルを維持する。","役割の行または既定値から開始し、系列を維持してレベルを設定する。開始レベルは `/setup-pstack` の予算。パネルの席は記載のレベルを維持し、ほかの役割は最難関の仕事で1段階上げ（上限 xhigh）、判断で1段階、定型作業で2段階以上下げる。どの役割も xhigh を上限とし、Opus 5.5 は常に `-fast` の識別子を使用する。検証は常に `swarm workers` のモデル。Gemini の席は `gemini-4-carbon-high` を上限とする。"],["c",3,"識別子が拒否された場合の代替の順序を1文に変更","Task ツールが調整後の識別子を拒否した場合は、役割の行または既定値を使用して報告する。それも拒否された場合は呼び出し元スキルの代替へ移行する。拒否済みの識別子は再び指定しない。呼び出し元スキルに代替がない場合は、エラーが示す有効な識別子から同系列で最も近いものを使用し、一覧にない場合と、代替が次の手順を示さずに尽きた場合は `model` を省略する。","Task ツールが識別子を拒否した場合は、その識別子を再び指定しない。役割の行または既定値、呼び出し元スキルの代替、同系列で最も近い有効な識別子、`model` の省略の順に代替し、その旨を報告する。"],["c",3,"セカンドオピニオンと新しいサブエージェントの規定を短縮","セカンドオピニオンは同じプロンプトを別のモデルで実行し、一致は強い信号とする。既存のエージェントの再開は、移動が高コストな状態（ローカルのチェックアウト、未コミットの変更、開発サーバー・シミュレーター・babysit の監視などの実行中のプロセス）が必要な場合だけ。停止・保留の指示は再利用ではなく、PR の担当などの役割は、エージェントの報告の後に新しいエージェントが次の回を担当する。","セカンドオピニオンは同じプロンプトを別ベンダーのモデルで実行する。既存のエージェントの再開は、移動が高コストな状態（チェックアウト、未コミットの変更、実行中のプロセス）が必要な場合だけ。停止・保留の指示と、役割の引き継ぎの規定は削除。"],["c",4,"Writing the reply を1段落に縮小","下書きの時点で清書する。短い平叙文、長いダッシュの禁止、文中の接続のコロンの禁止、簡潔さを理由に内容を省略しない、利用者と保守担当者への影響から説明する、リンク・引用を捏造しない、各主張と同じ文に根拠か確度を付記する。全てのプレイブックはこの形式の返答で終了し、PR のリンクを `https://github.com/\u003cowner>/\u003crepo>/pull/\u003cnumber>` の形式で記載する。","短い平叙文で記載し、長いダッシュと接続のコロンを使用しない。ユーザーにとって変化する点から記載する。各主張に根拠か確度（実測・推論・推測）を付記する。実行できる確認を人間に依頼しない。プレイブックの最後の返答、リンク・引用、保守担当者への影響の規定は削除。"],["d",4,"Comments 節を削除","コメントは返答と同じ規則で記載し、コードで示せない自明でない理由だけを残す。検証・テストのスクリプトに段階を説明するコメントを記載せず、アサーションとログの文字列で手順を示す。委任先の差分を含む全てのファイルに適用する。",""],["c",5,"プレイブックの説明を削除し、名前の一覧に変更","各プレイブックに対象の説明と起動語がある（例: Investigation は読み取り専用の問い、Bug fix は報告された不具合、Opening a PR はほかの全てのプレイブックの最後に起動）。","22件のプレイブックを名前だけで列挙し、タスクに該当するプレイブックの手順を `playbooks/\u003ctitle>.md` で開く。各プレイブックの説明と起動語は削除。"],["d",5,"`Orchestrate` プレイブックを削除","常設のプロジェクト規模のプログラム（複数日、多数のスタック PR、1人の調整役の下のサブエージェント群）は **Orchestrate** の対象とする。1つのエージェントがセッションの予算内で完了できる作業は、表現がプログラム風でも Autonomous run の対象とする。",""],["c",5,"手順の複写と `figure-it-out` への振り分けを短縮","一致したプレイブックの手順を原文のまま、作業固有の ToDo より前に todolist の先頭へ複写する。大規模・横断的な作業（多数の呼び出し箇所の移行、複数の要素にまたがる変更）と利用者が不在の間に進行させ後で確認する作業は、Feature などが該当する場合も **figure-it-out** の対象とし、該当するプレイブックがない作業も **figure-it-out** の対象とする。","プレイブックの手順を最初に todolist ツールへ複写する。大規模・横断的・不在中の作業と、該当するプレイブックがない作業は **figure-it-out** の対象とする。「原文のまま」と、ほかのプレイブックが該当する場合の優先の記載は削除。"],["d",5,"実施しない手順を `skip: \u003creason>` で残す規則を削除","実施しない手順は、1行の `skip: \u003creason>` を付けて ToDo に残す。",""],["a",7,"`poteto-mode/worker.md` を追加","","起動されたエージェントに、運用者がキックオフを記載したエージェントではなく実行の対象の人であることを明示する。キックオフの基準が全ての基準であること、失敗した実行か利用者に影響するバグの場合だけ停止すること、人に質問しないこと、PR をレビュー可能な状態で開くこと、PR の題と本文の形を規定し、同じ指定を次のエージェントへ伝達する。"],["c",7,"原則のスキル14件の本文を短縮","14件の principle スキルが長い本文を持ち、うち4件がインターフェースの圧縮について記載する。","各規則とその確認方法を残した短い本文に置換する。frontmatter は変更なし。ほかのスキルへの参照2件は `benchmark-checklist` と `typescript-best-practices` を明記する。インターフェースの圧縮の記載は削除。"],["c",7,"`unslop` と `technical-writing` の本文を短縮","","`unslop` は規則番号を維持し、規則14（文中のコロンの禁止）は同じ意味のまま。廃止した規則は欠番とする。`technical-writing` は4つの層を短い形で維持し、slop のパターンは `unslop` へ、UI の文字列は製品のコピーのガイドラインへ振り分ける。"],["c",7,"Opening a PR プレイブックを3段落に縮小","forge、準備状態、規模の詳細な節を持つ。","worktree、小さなコミット、`/deslop`、題の形式、本文の6つの見出し、ベースブランチによる積み上げ、レビュー可能な状態での作成を維持する。PR のツールがない場合は `gh pr create`（`--draft` なし）か `origin pr create --status open` で作成する。"],["c",7,"Babysit プレイブックを6規則に縮小","","3つのモード、競合・スレッド・CI の順序、rebase しない規則、Bugbot の懐疑的な選別、マージしない規則を維持する。forge は既定が `gh`、Origin の CLI がリポジトリを解決する場合は `origin pr` で、`gt` は使用しない。返信は `gh api --input` か `origin pr thread reply --body-file` で送信し、コメントの文面からシェルのコマンドを構成しない。"],["c",7,"Multi-phase plan プレイブックを5手順に縮小し、`check-plan.mjs` を削除","","小さな変更を対象外とする規則、試作で先に決定する問い、着地の順序・依存グラフ・PR ごとのチェックボックスの節を持つ計画ファイル、単体・実環境・性能の検証の項目、実行前の停止を維持する。どこからも実行されない `check-plan.mjs` とそのテストを削除する。"],["c",7,"`reflect` をサブエージェントなしの1ファイルに変更","3つのレビュアーと synthesizer、4件の参照ファイルを使用する。","会話記録を自分で参照し、今後も成立し将来のエージェントの作業を変更する所見だけを残し、セッションで使用したスキルへ振り分け、編集の前に承認を待機する。`plugins/cache/` 配下のスキルを編集せず、PR の作成と push をしない規則は維持。`/setup-pstack` の `reflect tooling` と reflect の各役割を廃止。"],["c",7,"`architect` を短い指示と `arena` への振り分けに縮小","5つのフェーズ、runner のプロンプト、危険信号の一覧、根拠のテンプレートを使用する。","変更が触れる全てのシステムを追跡し、2つの形を作成し、状態ごとの所有者が1つ・各作業の方法が1つ・呼び出し側の知識が最少の形を選択し、回避策が反復する場合は再設計する。大規模または議論のある設計は `arena` を実行する。`/setup-pstack` の `architect runners` を廃止。"],["c",7,"`arena` の runner と cross-judge の手順を短縮","","Phase A の手順3は、runner の行、既定のパネル、別名の規則、拒否された識別子の代替（同系列で最も近い識別子か、席を除外して runner を2つ以上残す）、系列の規則を維持する。Phase C は judge のプール、別ベンダーの規則（Fable は Claude と同じベンダーとする）、親が不明な場合、省略を維持する。長い代替の連鎖は削除。"],["d",7,"`playbooks/orchestrate.md` を削除","`playbooks/orchestrate.md` が、常設のプロジェクトを1つの調整役のチャットで運用する手順を規定する。",""],["c",7,"`/setup-pstack`: `# defaults: 3` と3段階の予算","`# defaults: 2` を出力する。","`# defaults: 3` を出力し、xhigh を上限とする3段階の予算（large・medium・small）を提示する。新しい印のないルールは、次回の実行で廃止した役割を削除し、旧来の3席の既定のままの cross-judge のプールを新しいプールへ変更し、`unlimited` の予算を `large` へ変更する。`# defaults: 2` より古いルールの Grok の移行は維持する。"],["c",7,"既定モデルに合わせて `poteto-agent` と各スキルを更新","","`poteto-agent` は `claude-opus-5-5-xhigh-fast` に固定する。`arena` の cross-judge のプールから Fable を除外する。`show-me-your-work` のレビュアーは別ベンダーのモデルを使用する。結果の送信・待機・集約だけの Eval のエージェントは `claude-opus-5-5-medium-fast` で実行する。"],["c",7,"README・ガイド・Claude Code 向けの対応表を更新","","README とガイド（01・02・04・05・06・07・09）を、新しい既定モデル、短縮したプレイブック、`worker.md`、Orchestrate の削除に合わせて更新する。Claude Code 向けの対応表は `claude-fable-5-2-high` を `fable high` に対応させ、`poteto-agent` の起動ごとに model と effort を渡すと記載する。プラグインバージョンは 0.15.43。"]]},"sections":[{"id":"poteto-mode","tab":"SKILL.md","level":1,"title":"Poteto mode","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md#poteto-mode","text":"Bundled skills live at `../\u003cname>/SKILL.md` from this file, so put this file's absolute path in every `poteto-agent` prompt."},{"id":"poteto-mode/non-negotiables","tab":"SKILL.md","level":2,"title":"Non-negotiables","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md#non-negotiables","text":"The Principles section below grounds every trigger. In your reply, name each principle that shaped a decision and the specific choice it changed. Cite only principles whose leaf SKILL.md you read this session.\n\nThe remaining triggers live only here:"},{"id":"poteto-mode/non-negotiables/first-message","tab":"SKILL.md","level":3,"title":"First message","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ restate the user's goal and the smallest change that meets it, then proceed. Open each subagent brief, PR `## Why`, and final report with the goal."},{"id":"poteto-mode/non-negotiables/starting-any-agent-whether-a-task-subagent-or","tab":"SKILL.md","level":3,"title":"Starting any agent, whether a Task subagent or a Project worker","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ the first line of its kickoff is `Read \u003cpath>/worker.md before anything else.`, with `\u003cpath>` the absolute path of this skill's folder. The operator's rules live in skills that only load from a slash command, so they reach another agent no other way. Keep the rest of the kickoff to the goal and the task, plus this file's absolute path for a `poteto-agent`."},{"id":"poteto-mode/non-negotiables/a-fork-you-could-settle-by-running-something","tab":"SKILL.md","level":3,"title":"A fork you could settle by running something","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ prototype it per `playbooks/prototype.md` instead of asking."},{"id":"poteto-mode/non-negotiables/code","tab":"SKILL.md","level":3,"title":"Code","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ name the data shape first. Across a function boundary → **architect**. Fan-out → **swarm**. Bakeoff → **arena**. Contested design → **interrogate**."},{"id":"poteto-mode/non-negotiables/prose-your-reply-included","tab":"SKILL.md","level":3,"title":"Prose, your reply included","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ **unslop**. Docs, PR descriptions, commit messages → **technical-writing**."},{"id":"poteto-mode/non-negotiables/before-commit","tab":"SKILL.md","level":3,"title":"Before commit","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ `/deslop` from the `cursor-team-kit` plugin. Before review → **no-comments**."},{"id":"poteto-mode/non-negotiables/shipping-ui-ide-cli","tab":"SKILL.md","level":3,"title":"Shipping UI / IDE / CLI","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ `control-ui` or `control-cli` from `cursor-team-kit`."},{"id":"poteto-mode/non-negotiables/a-number-you-measured","tab":"SKILL.md","level":3,"title":"A number you measured","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ **benchmark-checklist**."},{"id":"poteto-mode/non-negotiables/pr-status","tab":"SKILL.md","level":3,"title":"PR status","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ the **Babysit** playbook, not Cursor's built-in babysit skill. Landing a green stack → the **Shipping** playbook."},{"id":"poteto-mode/non-negotiables/bot-review-comments","tab":"SKILL.md","level":3,"title":"Bot review comments","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ judge each on its merits."},{"id":"poteto-mode/non-negotiables/long-or-unattended-work","tab":"SKILL.md","level":3,"title":"Long or unattended work","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"→ **show-me-your-work**."},{"id":"poteto-mode/principles","tab":"SKILL.md","level":2,"title":"Principles","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md#principles","text":"Read the leaf skill in full for any principle you apply. Each entry names when it applies. Each leaf is the **principle-\u003ctitle>** skill, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its name."},{"id":"poteto-mode/principles/core","tab":"SKILL.md","level":3,"title":"Core","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":""},{"id":"poteto-mode/principles/laziness-protocol","tab":"SKILL.md","level":3,"title":"Laziness Protocol","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Refactoring, sizing a diff, or tempted to add abstractions, layers, or signal threading. Bias to deletion and the smallest change that solves the problem."},{"id":"poteto-mode/principles/foundational-thinking","tab":"SKILL.md","level":3,"title":"Foundational Thinking","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Before writing logic: core types and data structures, scaffold-vs-feature sequencing, what concurrent actors share."},{"id":"poteto-mode/principles/redesign-from-first-principles","tab":"SKILL.md","level":3,"title":"Redesign from First Principles","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Integrating a new requirement into an existing design. Redesign as if it had been foundational from day one."},{"id":"poteto-mode/principles/attack-the-premise","tab":"SKILL.md","level":3,"title":"Attack the Premise","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Two or more fixes that share one premise have failed the same gate. Write the premise down and test it directly before you write another fix that assumes it."},{"id":"poteto-mode/principles/subtract-before-you-add","tab":"SKILL.md","level":3,"title":"Subtract Before You Add","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Sequencing an addition, refactor, or rewrite. Remove dead weight first, then build on the simpler base."},{"id":"poteto-mode/principles/minimize-reader-load","tab":"SKILL.md","level":3,"title":"Minimize Reader Load","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Reviewing or shaping code that's hard to trace. Count layers and hidden state, collapse one-caller wrappers, shrink mutable scope."},{"id":"poteto-mode/principles/outcome-oriented-execution","tab":"SKILL.md","level":3,"title":"Outcome-Oriented Execution","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Planned rewrites and migrations with explicit phase boundaries. Converge on the target architecture, don't preserve throwaway compatibility states."},{"id":"poteto-mode/principles/experience-first","tab":"SKILL.md","level":3,"title":"Experience First","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Product, UX, or feature-scope tradeoffs. Choose user delight over implementation convenience."},{"id":"poteto-mode/principles/exhaust-the-design-space","tab":"SKILL.md","level":3,"title":"Exhaust the Design Space","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"A novel interaction or architectural decision with no precedent. Build 2-3 competing prototypes and compare before committing."},{"id":"poteto-mode/principles/build-the-lever","tab":"SKILL.md","level":3,"title":"Build the Lever","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Any non-trivial work. Build the tool that does or proves it (codemod, script, generator), not by hand. The tool is the artifact a reviewer reruns."},{"id":"poteto-mode/principles/architecture","tab":"SKILL.md","level":3,"title":"Architecture","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":""},{"id":"poteto-mode/principles/model-the-domain","tab":"SKILL.md","level":3,"title":"Model the Domain","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Writing stateful logic, or code that branches a lot or repeats a shape assumption across files. Encode the domain in a structure (state machine, typed model, table or registry, reducer, boundary, the right collection) instead of scattered conditionals."},{"id":"poteto-mode/principles/boundary-discipline","tab":"SKILL.md","level":3,"title":"Boundary Discipline","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Wiring validation, error handling, or framework adapters. Guards at system boundaries, trust internal types, keep business logic pure."},{"id":"poteto-mode/principles/type-system-discipline","tab":"SKILL.md","level":3,"title":"Type System Discipline","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Designing types or a signature in any typed language. Make illegal states unrepresentable, brand primitives, parse external data at boundaries."},{"id":"poteto-mode/principles/make-operations-idempotent","tab":"SKILL.md","level":3,"title":"Make Operations Idempotent","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Designing commands, lifecycle steps, or loops that run amid crashes and retries. Converge to the same end state."},{"id":"poteto-mode/principles/migrate-callers-then-delete-legacy-apis","tab":"SKILL.md","level":3,"title":"Migrate Callers Then Delete Legacy APIs","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Introducing a new internal API while old callers exist. Migrate and delete in one wave."},{"id":"poteto-mode/principles/separate-before-serializing-shared-state","tab":"SKILL.md","level":3,"title":"Separate Before Serializing Shared State","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Concurrent actors might write the same file, branch, key, or object. Eliminate the sharing first."},{"id":"poteto-mode/principles/verification","tab":"SKILL.md","level":3,"title":"Verification","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":""},{"id":"poteto-mode/principles/prove-it-works","tab":"SKILL.md","level":3,"title":"Prove It Works","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"After a task, before declaring done. Verify against the real artifact, not a proxy or \"it compiles\"."},{"id":"poteto-mode/principles/fix-root-causes","tab":"SKILL.md","level":3,"title":"Fix Root Causes","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Debugging. Trace each symptom back to the first place the system went wrong and fix it there. A guard is a fix only when the state it handles is legitimate."},{"id":"poteto-mode/principles/sequence-work-into-verifiable-units","tab":"SKILL.md","level":3,"title":"Sequence Work into Verifiable Units","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"(**principle-sequence-verifiable-units**). Multi-step work (sweeps, migrations, runs of similar edits) and how you stack commits and PRs. Break work into small units that each end in a check, verify each before the next, and order delivery so the sequence proves itself."},{"id":"poteto-mode/principles/test-behavior-not-implementation","tab":"SKILL.md","level":3,"title":"Test Behavior, Not Implementation","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Writing, changing, or keeping a test. Assert what the code's users can observe, so the test fails when that behavior breaks and keeps passing when only the internals change."},{"id":"poteto-mode/principles/explain-the-number","tab":"SKILL.md","level":3,"title":"Explain the Number","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Apply before you measure, and before you trust, report, or act on a number you measured (a speedup, a regression, a throughput, a latency, or an eval result). Find what limits it, and rule out that it measured something other than the work you think."},{"id":"poteto-mode/principles/delegation","tab":"SKILL.md","level":3,"title":"Delegation","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":""},{"id":"poteto-mode/principles/guard-the-context-window","tab":"SKILL.md","level":3,"title":"Guard the Context Window","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Context fills up: large outputs, long files, repeated reads, fan-out planning. Route bulk to subagents, keep summaries in the main thread."},{"id":"poteto-mode/principles/never-block-on-the-human","tab":"SKILL.md","level":3,"title":"Never Block on the Human","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Tempted to ask \"should I do X?\" on reversible work. Proceed, present the result, let the human course-correct."},{"id":"poteto-mode/principles/meta","tab":"SKILL.md","level":3,"title":"Meta","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":""},{"id":"poteto-mode/principles/encode-lessons-in-structure","tab":"SKILL.md","level":3,"title":"Encode Lessons in Structure","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"You catch yourself writing the same instruction a second time. Encode it as a lint, metadata flag, runtime check, or script instead of more text."},{"id":"poteto-mode/autonomy","tab":"SKILL.md","level":2,"title":"Autonomy","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md#autonomy","text":""},{"id":"poteto-mode/autonomy/just-do-it","tab":"SKILL.md","level":3,"title":"Just do it","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Use any MCP tool. Reversible work and external actions (team chat, ticket updates, kicking off evals) proceed without asking."},{"id":"poteto-mode/autonomy/always-pause","tab":"SKILL.md","level":3,"title":"Always pause","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"for irreversible writes: force-push to shared branches, deploys, data deletion, customer messages."},{"id":"poteto-mode/autonomy/session-overrides","tab":"SKILL.md","level":3,"title":"Session overrides","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"\"Don't stop\" / \"going to bed\" / \"run until done\" / \"be fully autonomous\" → keep going."},{"id":"poteto-mode/autonomy/no-is-an-acceptable-answer","tab":"SKILL.md","level":3,"title":"No is an acceptable answer","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Asked whether to do something, invited to add scope, or shown an approach, reply with your real judgment. Decline, push back, or say \"this doesn't earn its place\" when true. A recommendation is a judgment, not a validation. Agreement is not the default, candor over sycophancy."},{"id":"poteto-mode/subagents","tab":"SKILL.md","level":2,"title":"Subagents","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md#subagents","text":"- Code, prose, and judgment: `claude-opus-5-5-xhigh-fast`.\n- Trivial mechanical edits: `claude-opus-5-5-high-fast`.\n- Diverse review and design panels: one runner each on `claude-fable-5-2-high`, `claude-opus-5-5-high-fast`, and `gemini-4-carbon-high`.\nYou own every subagent's work. Review the diff and write your own summary. A second opinion is the same prompt on another vendor's model."},{"id":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn","tab":"SKILL.md","level":3,"title":"Use `subagent_type: \"poteto-agent\"` for any subagent you spawn directly inside a playbook step","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"The chat that receives `/poteto-mode` runs the playbook itself. Routed workflow skills (`interrogate`, `swarm`) set their own `subagent_type`. Respect it."},{"id":"poteto-mode/subagents/defaults-for-every-task-call","tab":"SKILL.md","level":3,"title":"Defaults for every `Task` call","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"`run_in_background: true`, agent mode (readonly strips MCP), file pointers not inlined context, and an explicit model per role, Project workers included. `/setup-pstack` writes `~/.cursor/rules/pstack-models.mdc`, whose per-role lines override the defaults below and the role models in the routed skills (`arena`, `swarm`, `interrogate`). A role with no line keeps its default. A line of `inherit-parent` or `auto` runs the role on the parent model, so omit `model` and spawn `generalPurpose`, because `poteto-agent` defaults to Opus 5.5. Each code playbook reads its own line (`feature, refactoring`, `bug-fix`, `perf-issue`, or `hillclimb`), prose and judgment read `judgment and prose`, and trivial mechanical edits read `swarm workers`. If the rule has no `# defaults: 3` line, an older setup wrote it. Keep honoring its lines, and tell the user once per session to rerun `/setup-pstack`."},{"id":"poteto-mode/subagents/fable-52-is-an-exception","tab":"SKILL.md","level":3,"title":"Fable 5.2 is an exception","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"It runs outside a panel only when the user named it for this task or two Opus 5.5 xhigh runs of the same brief failed its check. Say which. Difficulty alone never qualifies."},{"id":"poteto-mode/subagents/match-the-model-to-the-job","tab":"SKILL.md","level":3,"title":"Match the model to the job","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Start from the role's line or default, keep its family, and set the level the job needs. The `/setup-pstack` budget sets each role's starting level. Panel seats keep their listed level. Raise any other role one step, up to xhigh, for the hardest or subtlest work, lower it one step for judgment, and two or more steps for routine work. No role runs above xhigh. Opus 5.5 always runs its `-fast` slug. Verification always runs on the `swarm workers` model, `claude-opus-5-5-high-fast` by default. A Gemini seat never runs above `gemini-4-carbon-high`, its top slug. If the Task tool rejects a slug, never pass it again. Fall back to the role's line or default, then the calling skill's fallback, then the closest valid slug of the same family, then omit `model`. Say so."},{"id":"poteto-mode/subagents/fresh-subagents-by-default","tab":"SKILL.md","level":3,"title":"Fresh subagents by default","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md","text":"Give a fix round, a follow-up, a retry, or the next queue item to a fresh subagent with the original brief, every later directive, and the prior agent's report and branch. Resume an existing subagent only when the work needs state that lives in it and is costly to move: its checkout, its uncommitted changes, or a process it still runs."},{"id":"poteto-mode/writing-the-reply","tab":"SKILL.md","level":2,"title":"Writing the reply","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md#writing-the-reply","text":"Write short declarative sentences with no long dash and no colon as a connector. Lead with what changes for the user. Give each claim its evidence or a label (measured, inferred, or guess). Never hand the human a check you could run."},{"id":"poteto-mode/playbooks","tab":"SKILL.md","level":2,"title":"Playbooks","url":"https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md#playbooks","text":"Match the task to a playbook and open its steps at `playbooks/\u003ctitle>.md`, with the title in kebab case. Copy its steps into the todolist tool first. Large, cross-cutting, or unattended work, or a task no playbook fits, routes to the **figure-it-out** skill.\n\nInvestigation, Bug fix, Perf issue, Hillclimb, Runtime forensics, Trace forensics, Feature, Refactoring, Prototype, Visual parity, Authoring a skill, Eval, Babysit, Shipping, Autonomous run, Autopilot-full, Autopilot-stack, Session pickup, Pause safely, Multi-phase plan, Worktree cleanup, Opening a PR."}],"issues":[{"id":"i4","type":"ambiguous","title":"Session overrides の継続と Always pause の停止の優先","body":"「Session overrides」の節は、「Don't stop」「going to bed」「run until done」「be fully autonomous」の指示がある場合は作業を継続すると記載し、「Always pause」の節は、不可逆な書き込み（共有ブランチへの force-push、デプロイ、データ削除、顧客へのメッセージ）では必ず停止すると記載している。これらの指示の下で不可逆な書き込みに該当する操作を実施する場合に、停止するか継続するかを記載していない。","src":"poteto-mode/autonomy/session-overrides poteto-mode/autonomy/always-pause"},{"id":"i7","type":"ambiguous","title":"独自の subagent_type を指定するスキルの列挙が全件か例示か","body":"「Use subagent_type: \"poteto-agent\" ...」の節は、プレイブックのステップ内で直接起動するサブエージェントに poteto-agent を指定し、例外として、独自の subagent_type を指定する routed workflow skills に interrogate・swarm を列挙している。「Defaults for every Task call」の節は、/setup-pstack のルールの役割ごとの行がモデルを上書きする routed skills に arena・swarm・interrogate を列挙している。前者の列挙が全件か例示かを記載しておらず、arena が起動するサブエージェントに poteto-agent を指定するかを判断できない。","src":"poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn poteto-mode/subagents/defaults-for-every-task-call"},{"id":"i8","type":"gap","title":"UI・IDE・CLI と control スキルの対応","body":"「Shipping UI / IDE / CLI」の節は、UI・IDE・CLI の出荷時に cursor-team-kit の control-ui か control-cli を使用すると記載し、どの対象にどちらを使用するかを記載していない。スキルの名前から UI は control-ui、CLI は control-cli と推定できるが、IDE に該当するスキルを判断できない。","src":"poteto-mode/non-negotiables/shipping-ui-ide-cli"},{"id":"i9","type":"gap","title":"各プレイブックの対象と、複数のプレイブックに該当するタスクの選択","body":"「Playbooks」の節は、タスクに該当するプレイブックを選択すると規定し、22件のプレイブックを名前だけで列挙している。選択の優先として、大規模・横断的・不在中の作業と、該当するプレイブックがない作業を figure-it-out の対象とすることだけを記載している。各プレイブックが対象とするタスクと、複数のプレイブックに該当するタスクの選択を記載していない。図の「依頼を分類」の各枝は、条件をプレイブックの名前で記載した。","src":"poteto-mode/playbooks"},{"id":"i10","type":"note","title":"状態の名前と順序は作成者の構成","body":"原文は、起動条件（Non-negotiables）、原則（Principles）、自律実行（Autonomy）、サブエージェント（Subagents）、返答の書き方（Writing the reply）、プレイブック（Playbooks）の節で構成し、作業の局面と局面の順序を定義していない。図の上段の13状態の名前と順序、「随時」の8状態の名前は作成者の構成である。「壊れたスキルを発見」の状態は、2f87c854fe で全ての枝の規定が削除され、それより前の時点だけで表示する。各規定は、条件が該当する局面の状態に配置した。1つの節の規定を複数の状態に分割した箇所がある。「First message」は「最初のメッセージ」「PRを作成」「返答」「作業を委任」に、「Non-negotiables」の冒頭は「/poteto-mode」「返答」に、「Code」は「設計」「実装」「作業を委任」に、「Prose, your reply included」は「文章を書く」「コミット前」「PRを作成」に、「Before commit」は「コミット前」「レビュー前」に、「PR status」は「PRを仕上げる」「マージ」に、「Use subagent_type: \"poteto-agent\" ...」は「/poteto-mode」「作業を委任」に、「Defaults for every Task call」と、その段落に続く既定値の一覧を含む「Subagents」の節の本文は「作業を委任」「モデルを選択」に、「Match the model to the job」は「モデルを選択」「識別子が拒否された」に、「Playbooks」は「依頼を分類」「ToDoを作成」「PRを作成」に分割した。","src":"poteto-mode/non-negotiables poteto-mode/principles poteto-mode/autonomy poteto-mode/subagents poteto-mode/writing-the-reply poteto-mode/playbooks"},{"id":"i11","type":"note","title":"返答の文体の規則3件を1つの枝に集約","body":"「Writing the reply」の節の1文目の3件の規則（短い平叙文で記載する、長いダッシュを使用しない、接続のコロンを使用しない）は、原文が1文で記載しているため、「返答」の状態の「返答を書く → 短い平叙文。長いダッシュと接続のコロンを使用しない」の1つの枝に集約した。節のほかの3文（ユーザーにとって変化する点から記載する、各主張に根拠か確度を付記する、実行できる確認を人間に依頼しない）は個別の枝とした。","src":"poteto-mode/writing-the-reply"},{"id":"i12","type":"note","title":"モデルの遷移先は役割の既定の識別子","body":"「モデルを選択」の状態のモデルの識別子の遷移先（claude-opus-5-5-xhigh-fast、claude-opus-5-5-high-fast、パネルの3件）は、「Defaults for every Task call」の段落に続く既定値の一覧（節の抽出では「Subagents」の節の本文）が記載する役割の既定の識別子である。「Defaults for every Task call」の節は役割ごとの行が既定値を上書きすると規定し、「Match the model to the job」の節は役割の行または既定値から開始し、系列を維持して仕事に必要なレベルを設定すると規定しているため、使用する識別子は遷移先と相違する場合がある。例えば、文章と判断の役割の判断の仕事は、推論レベルを1段階低下させた識別子となる。パネルの席は記載のレベルを維持する。","src":"poteto-mode/subagents poteto-mode/subagents/defaults-for-every-task-call poteto-mode/subagents/match-the-model-to-the-job"},{"id":"i13","type":"note","title":"図に枝として記載していない規定","body":"次の規定は、該当する節を枝の根拠としているが、図に枝として記載していない。「Just do it」の節の、任意の MCP ツールの使用。「Defaults for every Task call」の節の、/setup-pstack が ~/.cursor/rules/pstack-models.mdc を出力し、その役割ごとの行が既定値と routed skills（arena・swarm・interrogate）の役割のモデルを上書きし、行のない役割は既定値を維持するとする規定。","src":"poteto-mode/autonomy/just-do-it poteto-mode/subagents/defaults-for-every-task-call"}]};
+const $ = id => document.getElementById(id);
+const M = D.meta, HASH = !!(D.timeline && D.timeline.length);
+// 履歴がない場合も POS・SK・showAt・renderCards を分岐させずに動かすため、内部用の1件を補い、時点の UI だけを非表示にする。
+const TL = HASH ? D.timeline : [{ sha: '0000000', date: '1970-01-01', title: '', add: 0, del: 0 }];
+const HIST = D.hist || {}, AREA = M.areas || [], SEC = D.sections || [], ISS = D.issues || [];
+const KK = { a: 'add', c: 'chg', d: 'del' }, GLYPH = { add: '+', chg: '~', del: '−' };
+const esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const rich = x => esc(x).replace(/`([^`]+)`/g, '<code>$1</code>');
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const toks = s => String(s || '').split(/\s+/).filter(Boolean);
+
+/* ---------- 状態機械の描画 ---------- */
+const LOOK = { skill: 'skill', prin: 'prin', pb: 'pb', act: 'act', stop: 'stop', m: 'm' };
+for (const [id, , look] of M.kinds || []) LOOK[id] = look;
+const target = ([k, n, x]) => {
+  if (k === 'state') return `<button type="button" class="t go" data-st="${esc(n)}">${esc(n)}</button>`;
+  const lk = LOOK[k] || 'act';
+  return lk === 'pb' ? `<span class="t pb">${esc(n)}${x ? `<small>${esc(x)}</small>` : ''}</span>`
+    : lk === 'm' ? `<span class="mc"${x ? ` title="${esc(x)}"` : ''}><i></i>${esc(n)}</span>`
+    : `<span class="t ${lk}"${x ? ` title="${esc(x)}"` : ''}>${esc(n)}</span>`;
+};
+const EXPLICIT = M.transitions === 'explicit';
+const VARS = M.variants || [], VLABEL = Object.fromEntries(VARS.map(v => [v.id, v.label]));
+const VCOL = ['--m-gemini', '--m-opus', '--m-fable', '--add', '--m-grok'];
+const vcol = id => `var(${VCOL[VARS.findIndex(v => v.id === id) % VCOL.length]})`;
+const LV = Object.assign({ must: '必須', should: '望ましい', may: '任意', deferred: '当面実装しない', trial: '試験的' }, M.levelLabels || {});
+const STDL = { eq: '標準どおり', strict: '標準より厳格', dev: '標準からの逸脱' }, STDG = { eq: '=', strict: '>', dev: '≠' };
+const ITYPE = { conflict: '原文の食い違い', gap: '記載のない点', ambiguous: '解釈が分かれる記載', note: '作成者の注記' };
+const ITORDER = ['conflict', 'gap', 'ambiguous', 'note'];
+const ISSUE = Object.fromEntries(ISS.map(x => [x.id, x]));
+const tosHtml = to => to.map((t, i) => (i && !(LOOK[t[0]] === 'm' && LOOK[to[i - 1][0]] === 'm') ? '<span class="then">→</span>' : '') + target(t)).join('');
+const attrs = r => `data-h="${esc(r.h || '')}" data-for="${esc((r.for || []).join(' '))}" data-src="${esc(r.src || '')}" data-issue="${esc(r.issue || '')}"`;
+const lvCls = r => (r.gap ? ' gap' : '') + (r.level && r.level !== 'must' ? ' lv-' + r.level : '');
+const why = r => r.why ? (Array.isArray(r.why) ? r.why : [r.why, r.why]) : null;
+function marks(r) {
+  const w = why(r), all = !VARS.length || !r.for || r.for.length >= VARS.length;
+  return (r.level === 'trial' ? `<i class="lvm" title="${esc(LV.trial)}">β</i>` : '')
+    + (r.std ? `<i class="std ${r.std[0]}" title="${esc(STDL[r.std[0]] + (r.std[1] ? ': ' + r.std[1] : ''))}">${STDG[r.std[0]]}</i>` : '')
+    + (w ? `<span class="why" title="${esc(w[1])}">${esc(w[0])}</span>` : '')
+    + toks(r.issue).map(id => `<i class="ism ${ISSUE[id] ? ISSUE[id].type : ''}" data-issue="${esc(id)}" title="${esc(ISSUE[id] ? ITYPE[ISSUE[id].type] + ': ' + ISSUE[id].title : id)}"></i>`).join('')
+    + (all ? '' : `<span class="vds">${(r.for || []).map(v => `<i style="--vc:${vcol(v)}" title="${esc(VLABEL[v] || v)}"></i>`).join('')}</span>`);
+}
+const tip = r => [r.level && r.level !== 'must' ? LV[r.level] : '', r.inferred ? '補完: ' + r.inferred : ''].filter(Boolean).join('\n');
+const gtext = r => `<span class="gt${r.inferred ? ' inf' : ''}"${tip(r) ? ` title="${esc(tip(r))}"` : ''}>${esc(r.g)}</span>`;
+// 時点の記号 (+ ~ −) と ⟳ は疑似要素にしない。エラーの枝と判定表の欄は .tos を持たず、jsdom の検査も疑似要素を照合できないため。
+const HLT = '<span class="hlt" aria-hidden="true" hidden>⟳</span>', HMK = '<span class="mk hmk" aria-hidden="true" hidden></span>';
+const ruleHtml = r => `<div class="rule${lvCls(r)}" ${attrs(r)}><div class="guard">${gtext(r)}${marks(r)}</div><div class="tos">${HLT}${tosHtml(r.to)}${HMK}</div></div>`;
+let foldN = 0;
+function errorsHtml(list) {
+  const groups = [];
+  for (const r of list) {
+    const k = JSON.stringify(r.to);
+    let g = groups.find(x => x.k === k);
+    if (!g) groups.push(g = { k, to: r.to, rs: [] });
+    g.rs.push(r);
+  }
+  return `<div class="efold" data-fi="${foldN++}"><button type="button" class="eh">エラー・不可<b class="en">${list.length}</b></button><div class="ebody">${groups.map(g =>
+    `<div class="eg"><div class="egs">${g.rs.map(r => `<div class="rule err${lvCls(r)}" ${attrs(r)}>${HLT}${gtext(r)}${marks(r)}${HMK}</div>`).join('')}</div><div class="tos"><span class="ar"></span>${tosHtml(g.to)}</div></div>`).join('')}</div></div>`;
+}
+// 判定表の欄も枝と同じく .rule として描画し、強調・選択・h・用途の処理に含める。該当なし・未規定の欄は .nb (枝ではない) を付ける。
+function tableHtml(t) {
+  const at = {};
+  for (const c of t.cells || []) (at[c.r + ',' + c.c] = at[c.r + ',' + c.c] || []).push(c);
+  const entry = x => x.to ? `<div class="rule ce${lvCls(x)}" ${attrs(x)}>${HLT}<span class="cv${x.inferred ? ' inf' : ''}"${tip(x) ? ` title="${esc(tip(x))}"` : ''}>${tosHtml(x.to)}</span>${marks(x)}${HMK}</div>`
+    : x.na ? `<div class="rule ce nb na" ${attrs(x)}>${HLT}<span class="cv" title="${esc(x.na)}">—</span>${marks(x)}${HMK}</div>`
+    : `<div class="rule ce nb und" ${attrs(x)}>${HLT}<span class="cv">未規定</span>${marks(x)}${HMK}</div>`;
+  const cell = (r, c) => {
+    const list = at[r + ',' + c] || [], u = !list.some(x => x.to || x.na);
+    return `<td class="cell${u ? ' u' : ''}">${list.length ? list.map(entry).join('') : '<span class="und">未規定</span>'}<span class="vna" title="この用途には該当しない">—</span></td>`;
+  };
+  return `<div class="tblw"><table class="dt"><thead><tr><th><span class="ax">${esc(t.cols.label)}</span><span class="ax">${esc(t.rows.label)}</span></th>${t.cols.values.map(v => `<th>${esc(v)}</th>`).join('')}</tr></thead>`
+    + `<tbody>${t.rows.values.map((v, r) => `<tr><th>${esc(v)}</th>${t.cols.values.map((_, c) => cell(r, c)).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+let leadN = 0;
+const cluster = (c, lead) => `<div class="cluster"><div class="head"><div class="state${c.code ? ' code' : ''}">${esc(c.state)}</div>${lead ? `<div class="lead" style="--i:${++leadN}"></div>` : ''}</div><div class="rules">${(c.rules || []).map(ruleHtml).join('')}${c.table ? tableHtml(c.table) : ''}${c.errors && c.errors.length ? errorsHtml(c.errors) : ''}</div></div>`;
+
+document.title = M.title;
+{
+  const nm = M.brand || (M.source && M.source.title) || '';
+  $('bname').innerHTML = M.source && M.source.url ? `<a href="${esc(M.source.url)}" target="_blank" rel="noopener" title="${esc(M.source.title)}">${esc(nm)}</a>` : esc(nm);
+}
+$('mname').textContent = M.name || '';
+$('anytag').textContent = M.anyLabel || '';
+$('fbtn').textContent = M.fileLabel || '対象';
+$('tabn').textContent = TL.length;
+function legendMarks() {
+  const sts = [...D.machine.flow, ...D.machine.any];
+  const bs = sts.flatMap(s => [...(s.rules || []), ...(s.errors || []), ...((s.table && s.table.cells) || [])]);
+  const used = f => bs.some(f), item = (sw, l) => `<span class="lg">${sw}${l ? esc(l) : ''}</span>`;
+  let h = '';
+  for (const lv of ['should', 'may', 'deferred']) if (used(b => b.level === lv)) h += item(`<i class="sw ${lv}"></i>`, LV[lv]);
+  if (used(b => b.level === 'trial')) h += item('<i class="lvm">β</i>', LV.trial);
+  for (const s of ['eq', 'strict', 'dev']) if (used(b => b.std && b.std[0] === s)) h += item(`<i class="std ${s}">${STDG[s]}</i>`, STDL[s]);
+  if (used(b => b.inferred)) h += item('<span class="inf">補完</span>', '');
+  for (const t of ITORDER) if (ISS.some(x => x.type === t)) h += item(`<i class="ism ${t}"></i>`, ITYPE[t]);
+  if (sts.some(s => s.table)) h += item('<span class="und">未規定</span>', '') + item('<b>—</b>', '該当なし');
+  return h;
+}
+$('legend').innerHTML = (M.legend || (M.kinds || []).map(([k, l]) => [k, l])).map(([k, l]) => target([k, l])).join('')
+  + legendMarks() + '<span class="mk a">+</span><span class="mk c">~</span><span class="mk d">−</span>';
+$('flow').innerHTML = EXPLICIT ? D.machine.flow.map(c => cluster(c, false)).join('') :
+  '<div class="cluster pseudo-only"><div class="head"><div class="pseudo"></div><div class="lead" style="--i:0"></div></div></div>' +
+  D.machine.flow.map(c => cluster(c, true)).join('') +
+  '<div class="cluster pseudo-only"><div class="head"><div class="pseudo end"></div></div></div>';
+if (D.machine.any.length) $('any').insertAdjacentHTML('beforeend', D.machine.any.map(c => cluster(c, false)).join(''));
+else $('any').hidden = true;
+for (const id of ['flow', 'any']) $(id).classList.toggle('explicit', EXPLICIT);
+
+const app = $('app'), stage = $('stage'), world = $('world'), mini = $('mini');
+const CL = new Map([...world.querySelectorAll('.cluster')].filter(c => c.querySelector('.state')).map(c => [c.querySelector('.state').textContent, c]));
+const stateH = document.querySelector('.state').offsetHeight;
+document.querySelectorAll('.pseudo-only .head').forEach(h => { h.style.height = stateH + 'px'; });
+{
+  const n = leadN + 1, pct = (100 / n).toFixed(3);
+  const css = document.createElement('style');
+  css.textContent = `@keyframes token{0%{left:0;opacity:1}${pct}%{left:calc(100% - 34px);opacity:1}${(+pct + .01).toFixed(3)}%{left:0;opacity:0}100%{left:0;opacity:0}}.lead{--dur:${(n * .7).toFixed(1)}s}`;
+  document.head.appendChild(css);
+}
+
+/* ---------- 視点 ---------- */
+let sc = 1, tx = 0, ty = 0, raf = 0, geo = null, active = null, cur = null, hmk = [], hL = [], timer = 0, cards = [], locAt = -1;
+const wide = matchMedia('(min-width: 761px)');
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+function avail() {
+  const w = stage.clientWidth, h = stage.clientHeight, open = !app.classList.contains('closed');
+  return { w: open && wide.matches ? Math.max(240, w - 408) : w, h: open && !wide.matches ? Math.max(160, h * .4) : h };
+}
+function apply() {
+  world.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`;
+  const g = 28 * sc;
+  stage.style.backgroundSize = `${g}px ${g}px`;
+  stage.style.backgroundPosition = `${tx}px ${ty}px`;
+  drawMini();
+}
+const halt = () => { cancelAnimationFrame(raf); raf = 0; };
+function zoomAt(cx, cy, f) {
+  halt();
+  const ns = clamp(sc * f, .05, 3);
+  f = ns / sc;
+  tx = cx - (cx - tx) * f; ty = cy - (cy - ty) * f; sc = ns;
+  apply();
+}
+function view(b, o = {}) {
+  halt();
+  const v = avail(), pad = o.pad ?? 120;
+  const s1 = clamp(Math.min(v.w / (b.w + pad * 2), v.h / (b.h + pad * 2)), o.min ?? .05, o.max ?? 1);
+  const c1 = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+  const s0 = sc, c0 = { x: (v.w / 2 - tx) / sc, y: (v.h / 2 - ty) / sc };
+  const set = e => {
+    sc = s0 * Math.pow(s1 / s0, e);
+    tx = v.w / 2 - (c0.x + (c1.x - c0.x) * e) * sc;
+    ty = v.h / 2 - (c0.y + (c1.y - c0.y) * e) * sc;
+    apply();
+  };
+  if (o.instant || still.matches) return set(1);
+  const t0 = performance.now(), dur = 620;
+  const step = t => {
+    const u = clamp((t - t0) / dur, 0, 1);
+    set(u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+    if (u < 1) raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+}
+const fitAll = () => view({ x: 0, y: 0, w: world.offsetWidth, h: world.offsetHeight }, { pad: 12 });
+const centerZoom = f => { const v = avail(); zoomAt(v.w / 2, v.h / 2, f); };
+function wrect(el) {
+  const r = el.getBoundingClientRect(), o = stage.getBoundingClientRect();
+  return { x: (r.left - o.left - tx) / sc, y: (r.top - o.top - ty) / sc, w: r.width / sc, h: r.height / sc };
+}
+function union(rs) {
+  const x = Math.min(...rs.map(r => r.x)), y = Math.min(...rs.map(r => r.y));
+  return { x, y, w: Math.max(...rs.map(r => r.x + r.w)) - x, h: Math.max(...rs.map(r => r.y + r.h)) - y };
+}
+
+/* ---------- 全体図 ---------- */
+const col = {};
+function palette() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ink', 'line', 'state', 'add', 'chg', 'del']) col[k] = cs.getPropertyValue('--' + k).trim();
+}
+function measure() {
+  measure.w = Math.max(measure.w || 0, world.offsetWidth); measure.h = Math.max(measure.h || 0, world.offsetHeight);
+  const W = measure.w, H = measure.h;
+  geo = { W, H, cl: [...world.querySelectorAll('.cluster:not(.off)')].filter(c => c.querySelector('.state')).map(c => ({ r: wrect(c.querySelector('.rules')), s: wrect(c.querySelector('.state')) })) };
+  const mw = 236, mh = Math.round(mw * H / W), dpr = devicePixelRatio || 1;
+  mini.style.width = mw + 'px'; mini.style.height = mh + 'px';
+  mini.width = mw * dpr; mini.height = mh * dpr;
+  geo.k = mw / W * dpr; geo.dpr = dpr;
+}
+function drawMini() {
+  if (!geo) return;
+  const x = mini.getContext('2d'), k = geo.k, px = geo.dpr / k;
+  x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, mini.width, mini.height);
+  x.setTransform(k, 0, 0, k, 0, 0);
+  x.globalAlpha = .2; x.fillStyle = col.line;
+  for (const c of geo.cl) x.fillRect(c.r.x, c.r.y, c.r.w, c.r.h);
+  x.globalAlpha = 1; x.fillStyle = col.state;
+  for (const c of geo.cl) x.fillRect(c.s.x, c.s.y, Math.max(c.s.w, 5 * px), Math.max(c.s.h, 3 * px));
+  for (const m of app.classList.contains('nodiff') ? [] : hmk) {
+    x.fillStyle = col[m.d];
+    x.fillRect(m.r.x, m.r.y - px, Math.max(m.r.w, 4 * px), Math.max(m.r.h, 2.5 * px));
+  }
+  const v = avail();
+  x.globalAlpha = .1; x.fillStyle = col.ink; x.fillRect(-tx / sc, -ty / sc, v.w / sc, v.h / sc);
+  x.globalAlpha = 1; x.strokeStyle = col.ink; x.lineWidth = 1.5 * px; x.strokeRect(-tx / sc, -ty / sc, v.w / sc, v.h / sc);
+}
+function miniGo(e) {
+  halt();
+  const r = mini.getBoundingClientRect(), v = avail();
+  tx = v.w / 2 - (e.clientX - r.left) / r.width * geo.W * sc;
+  ty = v.h / 2 - (e.clientY - r.top) / r.height * geo.H * sc;
+  apply();
+}
+mini.addEventListener('pointerdown', e => { mini.setPointerCapture(e.pointerId); miniGo(e); });
+mini.addEventListener('pointermove', e => { if (e.buttons || e.pointerType === 'touch') miniGo(e); });
+
+/* ---------- キャンバスの操作 ---------- */
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) {
+    const r = stage.getBoundingClientRect();
+    zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * .01));
+  } else {
+    halt();
+    const k = e.deltaMode === 1 ? 32 : 1;
+    if (e.shiftKey && !e.deltaX) tx -= e.deltaY * k; else { tx -= e.deltaX * k; ty -= e.deltaY * k; }
+    apply();
+  }
+}, { passive: false });
+const pts = new Map();
+let pinch = 0, tap = null;
+const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+stage.addEventListener('pointerdown', e => {
+  halt();
+  stage.setPointerCapture(e.pointerId);
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  tap = pts.size === 1 ? { x: e.clientX, y: e.clientY, el: e.target } : null;
+  if (pts.size === 2) pinch = dist();
+  stage.classList.add('dragging');
+});
+stage.addEventListener('pointermove', e => {
+  const q = pts.get(e.pointerId);
+  if (!q) return;
+  const dx = e.clientX - q.x, dy = e.clientY - q.y;
+  q.x = e.clientX; q.y = e.clientY;
+  if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 5) tap = null;
+  if (pts.size === 1) { tx += dx; ty += dy; apply(); }
+  else if (pts.size === 2) {
+    const [a, b] = [...pts.values()], r = stage.getBoundingClientRect(), d = dist();
+    tx += dx / 2; ty += dy / 2;
+    if (pinch > 0) zoomAt((a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top, d / pinch); else apply();
+    pinch = d;
+  }
+});
+const release = e => {
+  pts.delete(e.pointerId);
+  pinch = 0;
+  if (!pts.size) stage.classList.remove('dragging');
+  if (tap && e.type === 'pointerup') act(tap.el);
+  tap = null;
+};
+// stage が pointer を捕捉するため、キャンバス内の選択は click ではなく pointerup の時点で処理する。
+function act(el) {
+  const at = s => el.closest && el.closest(s);
+  const go = at('.t.go'), eh = at('.eh'), im = at('.ism'), r = at('.rule');
+  if (go) goState(go.dataset.st);
+  else if (eh) toggleFold(eh.parentNode);
+  else if (im && ISSUE[im.dataset.issue]) openIssue(im.dataset.issue);
+  else if (r && r.classList.contains('hot')) { openDrawer(true); setTab('now'); select(cur + ':' + r._h.it[cur], -1); }
+  else if (r && r._src.length && SEC.length) pickRule(r);
+  else select(null);
+}
+stage.addEventListener('pointerup', release);
+stage.addEventListener('pointercancel', release);
+// キーボードで選択したボタンの click (detail が 0) だけを処理する。pointer の操作は act が処理済み。
+world.addEventListener('click', e => { const b = e.detail === 0 && e.target.closest('button'); if (b) act(b); });
+// キャンバス内のボタンにフォーカスすると、ブラウザが overflow: hidden の stage をスクロールし、tx・ty と表示がずれるため戻す。
+stage.addEventListener('scroll', () => { if (stage.scrollLeft || stage.scrollTop) { stage.scrollLeft = 0; stage.scrollTop = 0; } });
+$('zin').addEventListener('click', () => centerZoom(1.3));
+$('zout').addEventListener('click', () => centerZoom(1 / 1.3));
+$('zfit').addEventListener('click', fitAll);
+
+/* ---------- 枝と履歴の対応 ---------- */
+const POS = Object.fromEntries(TL.map((e, i) => [e.sha, TL.length - 1 - i]));
+const SK = TL.filter(e => HIST[e.sha]).reverse();
+const allRules = [...world.querySelectorAll('.rule')];
+for (const r of allRules) {
+  r._for = toks(r.dataset.for); r._src = toks(r.dataset.src); r._iss = toks(r.dataset.issue);
+  r._mk = r.querySelector('.hmk'); r._lt = r.querySelector('.hlt');
+  const m = r._h = { ev: {}, it: {}, add: -1, del: Infinity, chg: -1 };
+  for (const t of r.dataset.h.split(' ').filter(Boolean)) {
+    const [sha, x] = t.split(':'), k = x[0], p = POS[sha];
+    m.ev[sha] = k; m.it[sha] = +x.slice(1);
+    if (k === 'a') m.add = p; else if (k === 'd') m.del = p; else m.chg = Math.max(m.chg, p);
+  }
+}
+const stateOf = r => r.closest('.cluster').querySelector('.state').textContent;
+function group(rs) {
+  const L = [];
+  for (const r of rs) {
+    const name = stateOf(r);
+    let l = L.find(x => x.name === name);
+    if (!l) L.push(l = { name, els: [] });
+    l.els.push(r);
+  }
+  return L;
+}
+const hlocs = sha => group(allRules.filter(r => r._h.ev[sha] && shown(r)));
+const plocs = (sha, j) => group(allRules.filter(r => r._h.ev[sha] && r._h.it[sha] === j && shown(r)));
+const chips = (L, cls) => L.length ? `<div class="locs${cls}">${L.map((l, i) => `<button type="button" data-li="${i}">${esc(l.name)}</button>`).join('')}</div>` : '';
+const flyLoc = i => { if (hL[i]) view(union(hL[i].els.map(wrect)), { pad: 150, min: .35, max: 1 }); };
+
+/* ---------- 用途・折り畳み・矢印 ---------- */
+// 時点による非表示は .off、用途による非表示は .vx に分離する (showAt が .off を毎回付け直すため)。
+let VAR = '';
+const isVis = r => !r.classList.contains('off') && !r.classList.contains('vx');
+// 移動先には、非表示の状態の中の要素 (用途の選択時の該当なし・未規定の欄) を含めない。
+// isVis に含めないのは、refreshVis が状態の .off を isVis から算出し、一度非表示にした状態が戻らなくなるため。
+const shown = r => isVis(r) && !r.closest('.cluster').classList.contains('off');
+const has = (r, c) => r.classList.contains(c);
+// 「最新」では削除の時点の枝を CSS で非表示にするため、エラーの群・件数・矢印でも数えない。
+const live = r => isVis(r) && !(has(app, 'nodiff') && has(r, 'hk-d'));
+const isOpen = f => has(f, 'open') || has(f, 'auto');
+function refreshVis(reopen) {
+  for (const r of allRules) r.classList.toggle('vx', !!VAR && r._for.length > 0 && !r._for.includes(VAR));
+  for (const g of world.querySelectorAll('.eg')) {
+    const rs = [...g.querySelectorAll('.rule')];
+    g.classList.toggle('gone', !rs.some(live));
+    g.classList.toggle('gp', rs.some(r => has(r, 'pick')));
+    g.classList.toggle('gh', rs.some(r => has(r, 'hot')));
+  }
+  for (const f of world.querySelectorAll('.efold')) {
+    const rs = [...f.querySelectorAll('.rule')].filter(live);
+    if (reopen) f._shut = false;
+    f.querySelector('.en').textContent = rs.length;
+    f.hidden = !rs.length;
+    f.classList.toggle('auto', !f._shut && rs.some(r => has(r, 'hot') || has(r, 'pick')));
+  }
+  for (const td of world.querySelectorAll('td.cell')) {
+    const rs = [...td.querySelectorAll('.rule')];
+    td.classList.toggle('void', rs.length > 0 && !rs.some(isVis));
+  }
+  // 該当なし・未規定の欄 (.nb) は枝ではないため、用途を選択した場合は状態を表示する根拠にしない。
+  for (const cl of CL.values()) cl.classList.toggle('off', ![...cl.querySelectorAll('.rule')].some(r => isVis(r) && !(VAR && has(r, 'nb'))));
+  drawWires();
+  measure(); drawMini();
+}
+function drawWires() {
+  if (!EXPLICIT) return;
+  let out = '';
+  const done = new Set();
+  for (const ch of world.querySelectorAll('.t.go')) {
+    const own = ch.closest('.rule') || ch.closest('.eg'), tc = CL.get(ch.dataset.st);
+    if (has(own, 'rule') ? !live(own) : has(own, 'gone')) continue;
+    if (!tc || has(tc, 'off') || has(ch.closest('.cluster'), 'off')) continue;
+    const fold = ch.closest('.efold'), shut = fold && !isOpen(fold), from = shut ? fold.querySelector('.eh') : ch;
+    if (shut) { const k = fold.dataset.fi + '>' + ch.dataset.st; if (done.has(k)) continue; done.add(k); }
+    const lv = has(own, 'rule') ? (own.className.match(/\blv-(should|may|deferred)\b/) || [])[1] : '';
+    const hot = has(own, 'pick') || has(own, 'hot') || has(own, 'gp') || has(own, 'gh');
+    out += wire(wrect(from), wrect(tc.querySelector('.state')), (lv ? ' lv-' + lv : '') + (hot ? ' hot' : ''));
+  }
+  $('wires').innerHTML = out;
+}
+function wire(a, b, cls) {
+  const f = v => v.toFixed(1), sx = a.x + a.w, sy = a.y + a.h / 2;
+  let ex, ey, c1, c2;
+  if (b.x > sx + 40) {
+    ex = b.x - 3; ey = b.y + b.h / 2;
+    const d = Math.max(40, (ex - sx) / 2);
+    c1 = [sx + d, sy]; c2 = [ex - d, ey];
+  } else {
+    ex = b.x + Math.min(b.w / 2, 56); ey = b.y - 3;
+    c1 = [sx + Math.max(80, Math.abs(sx - ex) * .25), sy]; c2 = [ex, ey - Math.max(80, Math.abs(sy - ey) * .35)];
+  }
+  const ux = ex - c2[0], uy = ey - c2[1], l = Math.hypot(ux, uy) || 1, dx = ux / l, dy = uy / l;
+  const bx = ex - dx * 11, by = ey - dy * 11;
+  return `<path class="wire${cls}" d="M${f(sx)} ${f(sy)}C${f(c1[0])} ${f(c1[1])} ${f(c2[0])} ${f(c2[1])} ${f(bx)} ${f(by)}"/>`
+    + `<path class="ah${cls}" d="M${f(ex)} ${f(ey)}L${f(bx - dy * 5.5)} ${f(by + dx * 5.5)}L${f(bx + dy * 5.5)} ${f(by - dx * 5.5)}Z"/>`;
+}
+function goState(name) {
+  const cl = CL.get(name);
+  if (!cl || has(cl, 'off')) return;
+  const s = cl.querySelector('.state'), r = wrect(s);
+  for (const x of world.querySelectorAll('.state.ping')) x.classList.remove('ping');
+  void s.offsetWidth;
+  s.classList.add('ping');
+  view({ x: r.x - 40, y: r.y - 40, w: Math.max(r.w, 360) + 80, h: 400 }, { pad: 40, min: .4, max: 1 });
+}
+function toggleFold(f) {
+  const open = isOpen(f);
+  f.classList.toggle('open', !open);
+  f._shut = open;
+  refreshVis(false);
+}
+
+/* ---------- 更新パネル ---------- */
+const KEY = 'instruction-state-machine:' + (M.slug || M.title);
+let checked = new Set();
+try { checked = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...checked])); } catch (e) {} };
+const C = 2 * Math.PI * 17;
+$('arc').style.strokeDasharray = C;
+function tally() {
+  for (const el of cards) {
+    const on = checked.has(el.dataset.id);
+    el.classList.toggle('done', on);
+    el.querySelector('.chk').setAttribute('aria-pressed', on);
+  }
+  const n = cards.filter(el => checked.has(el.dataset.id)).length;
+  $('done').textContent = n; $('total').textContent = cards.length;
+  $('arc').style.strokeDashoffset = C * (1 - (cards.length ? n / cards.length : 0));
+  $('left').textContent = cards.length - n; $('left').dataset.n = cards.length - n;
+}
+const href = e => M.link
+  ? (e.pr && M.link.pr ? M.link.pr.replace('{pr}', e.pr) : M.link.commit.replace('{sha}', e.sha))
+  : `${M.repoUrl}/${e.pr ? 'pull/' + e.pr : 'commit/' + e.sha}`;
+const link = e => `<a href="${esc(href(e))}" target="_blank" rel="noopener">${[e.pr && '#' + e.pr, e.sha.slice(0, 7)].filter(Boolean).join(' · ')}</a>`;
+const gcard = ([k, ar, t, was, now], id, loc) => `<article class="card ${KK[k]}" data-id="${id}" tabindex="0">
+  <button class="chk" type="button" aria-label="確認済み" aria-pressed="false"></button>
+  <div class="r1"><span class="kind">${GLYPH[KK[k]]}</span><h3>${rich(t)}</h3><span class="src">${esc(AREA[ar])}</span></div>
+  <div class="detail">${loc}<div class="ba">${was ? `<div class="was"><span>${rich(was)}</span></div>` : ''}${now ? `<div class="now"><span>${rich(now)}</span></div>` : ''}</div></div></article>`;
+function renderCards(sha) {
+  const i = TL.findIndex(x => x.sha === sha), e = TL[i], prev = TL[i + 1], h = HIST[sha] || [];
+  $('ver').innerHTML = `<div class="v">${prev && prev.ver && prev.ver !== e.ver ? `<s>${esc(prev.ver)}</s> → ` : ''}<b>${esc(e.ver || e.date)}</b></div>${link(e)}`;
+  $('tabver').textContent = e.ver || e.date.slice(5);
+  $('list').innerHTML = `<div class="ctitle">${rich(e.title)}</div>${chips(hL, ' hloc')}<h2>${esc(M.fileLabel || '')}<span>${h.length}</span></h2>`
+    + h.map((it, j) => gcard(it, sha + ':' + j, chips(plocs(sha, j), ''))).join('');
+  $('list').scrollTop = 0;
+  cards = [...$('list').querySelectorAll('.card')];
+  tally();
+}
+function select(id, li = 'all') {
+  active = id; locAt = li === 'all' ? -1 : li;
+  for (const el of cards) el.classList.toggle('on', el.dataset.id === id);
+  const L = id ? plocs(cur, +id.split(':')[1]) : [], els = L.flatMap(l => l.els);
+  for (const r of allRules) r.classList.toggle('pick', els.includes(r));
+  world.classList.toggle('picking', els.length > 0);
+  refreshVis(els.length > 0);
+  const el = cards.find(x => x.dataset.id === id);
+  if (el) el.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+  const tg = li === 'all' ? els : L[li] ? L[li].els : [];
+  if (tg.length) view(union(tg.map(wrect)), { pad: 150, min: .08, max: 1 });
+}
+function showAt(sha, o = {}) {
+  const e = TL.find(x => x.sha === sha), X = POS[sha];
+  cur = sha; active = null;
+  world.classList.remove('picking');
+  for (const r of allRules) {
+    const m = r._h, k = m.ev[sha] || '';
+    r.classList.toggle('off', !(m.add <= X && X <= m.del));
+    r.classList.toggle('later', m.chg > X);
+    r.classList.toggle('hot', !!k);
+    r.classList.remove('pick');
+    for (const c of 'acd') r.classList.toggle('hk-' + c, k === c);
+  }
+  paintMarks();
+  refreshVis(true);
+  hL = hlocs(sha);
+  hmk = hL.flatMap(l => l.els.map(r => ({ r: wrect(r), d: KK[r._h.ev[sha]] })));
+  if (o.fly) flyLoc(0);
+  drawMini();
+  const si = SK.findIndex(x => x.sha === sha);
+  if (si >= 0) $('scrub').value = si;
+  $('tver').textContent = `${e.ver ? e.ver + ' · ' : ''}${e.date.slice(5)}`;
+  $('bver').textContent = e.ver || ''; $('bver').hidden = !e.ver;
+  for (const el of $('tl').querySelectorAll('.ev')) el.classList.toggle('cur', el.dataset.sha === sha);
+  renderCards(sha);
+}
+function paintMarks() {
+  const nodiff = has(app, 'nodiff');
+  for (const r of allRules) {
+    const k = r._h.ev[cur] || '';
+    r._mk.textContent = k ? GLYPH[KK[k]] : '';
+    r._mk.hidden = !k || nodiff;
+    r._lt.hidden = !has(r, 'later');
+  }
+}
+function toggle(id) {
+  checked.has(id) ? checked.delete(id) : checked.add(id);
+  save(); tally();
+}
+function hop(d, todo) {
+  const n = cards.length, at = cards.findIndex(el => el.dataset.id === active), start = at < 0 ? (d > 0 ? -1 : n) : at;
+  for (let s = 1; s <= n; s++) {
+    const el = cards[((start + d * s) % n + n) % n];
+    if (el.offsetParent !== null && !(todo && el.classList.contains('done'))) return select(el.dataset.id);
+  }
+}
+function openDrawer(open) {
+  app.classList.toggle('closed', !open);
+  setTimeout(drawMini, 300);
+}
+const TABS = [...(HASH ? ['now', 'all'] : []), ...(SEC.length ? ['src'] : []), ...(ISS.length ? ['iss'] : [])];
+function setTab(name) {
+  if (!TABS.includes(name)) return;
+  $('drawer').dataset.tab = name;
+  for (const x of $('tabs').children) x.setAttribute('aria-pressed', x.dataset.tab === name);
+}
+$('list').addEventListener('click', e => {
+  const hl = e.target.closest('.hloc button');
+  if (hl) return void flyLoc(+hl.dataset.li);
+  const el = e.target.closest('.card');
+  if (!el) return;
+  if (e.target.closest('.chk')) return toggle(el.dataset.id);
+  const loc = e.target.closest('.locs button');
+  if (!loc && active === el.dataset.id) return select(null);
+  select(el.dataset.id, loc ? +loc.dataset.li : 'all');
+});
+$('list').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.classList.contains('card')) select(e.target.dataset.id);
+});
+$('prev').addEventListener('click', () => hop(-1));
+$('next').addEventListener('click', () => hop(1));
+$('dtoggle').addEventListener('click', () => openDrawer(app.classList.contains('closed')));
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); });
+$('segdiff').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  app.classList.toggle('nodiff', b.dataset.v === 'now');
+  for (const x of $('segdiff').children) x.setAttribute('aria-pressed', x === b);
+  paintMarks();
+  refreshVis(false);
+});
+$('todo').addEventListener('click', () => { $('todo').setAttribute('aria-pressed', app.classList.toggle('todo')); });
+
+/* ---------- 原文・指摘 ---------- */
+const SECM = new Map(SEC.map(s => [s.id, s]));
+function locate(el, els) {
+  el._L = group(els);
+  return chips(el._L, '');
+}
+const flyGroup = (el, li) => { const l = el._L && el._L[li]; if (l) view(union(l.els.map(wrect)), { pad: 150, min: .35, max: 1 }); };
+function pick(els, fly) {
+  active = null;
+  for (const el of cards) el.classList.remove('on');
+  for (const r of allRules) r.classList.toggle('pick', els.includes(r));
+  world.classList.toggle('picking', els.length > 0);
+  refreshVis(els.length > 0);
+  if (fly && els.length) view(union(els.map(wrect)), { pad: 150, min: .08, max: 1 });
+}
+function renderSrc() {
+  const lv0 = Math.min(...SEC.map(s => s.level ?? 0)), tabs = [...new Set(SEC.map(s => s.tab || ''))];
+  let out = '';
+  for (const t of tabs) for (const [i, s] of SEC.filter(x => (x.tab || '') === t).entries()) {
+    const n = allRules.filter(r => r._src.includes(s.id)).length, head = !s.text;
+    if (!i) out += `<h2>${esc(t)}<span>${SEC.filter(x => (x.tab || '') === t).length}</span></h2>`;
+    out += `<article class="sec${head ? ' head' : ''}${s.skip ? ' skip' : ''}" data-id="${esc(s.id)}" style="--ind:${Math.max(0, (s.level ?? lv0) - lv0) * 10}px"${s.skip ? ` title="${esc('網羅の対象外: ' + s.skip)}"` : ''}${head ? '' : ' tabindex="0"'}>`
+      + `<div class="r1"><h3>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : esc(s.title)}</h3>${n ? `<span class="n">${n}</span>` : ''}</div><div class="detail"></div></article>`;
+  }
+  $('srcl').innerHTML = out;
+}
+function openSec(ids, fly) {
+  let first = null;
+  const els = [];
+  for (const el of $('srcl').querySelectorAll('.sec')) {
+    const on = ids.includes(el.dataset.id), s = SECM.get(el.dataset.id);
+    el.classList.toggle('on', on);
+    if (!on) continue;
+    const mine = allRules.filter(r => r._src.includes(s.id) && shown(r));
+    el.querySelector('.detail').innerHTML = (s.text ? `<p class="body">${esc(s.text)}</p>` : '') + locate(el, mine);
+    els.push(...mine);
+    first = first || el;
+  }
+  if (first) first.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+  if (fly) pick([...new Set(els)], true);
+}
+function pickRule(r) {
+  pick([r], false);
+  openDrawer(true); setTab('src');
+  openSec(r._src, false);
+}
+function renderIss() {
+  let out = '';
+  for (const t of ITORDER) {
+    const list = ISS.filter(x => x.type === t);
+    if (!list.length) continue;
+    out += `<h2>${esc(ITYPE[t])}<span>${list.length}</span></h2>` + list.map(x => {
+      const n = allRules.filter(r => r._iss.includes(x.id)).length;
+      return `<article class="isc" data-id="${esc(x.id)}" tabindex="0"><div class="r1"><i class="ism ${t}"></i><h3>${rich(x.title)}</h3>${n ? `<span class="n">${n}</span>` : ''}</div><div class="detail"></div></article>`;
+    }).join('');
+  }
+  $('issl').innerHTML = out;
+}
+function openIssue(id) {
+  openDrawer(true); setTab('iss');
+  let els = [];
+  for (const el of $('issl').querySelectorAll('.isc')) {
+    const on = el.dataset.id === id, x = ISSUE[el.dataset.id];
+    el.classList.toggle('on', on);
+    if (!on) continue;
+    els = allRules.filter(r => r._iss.includes(id) && shown(r));
+    const src = toks(x.src).map(s => `<button type="button" data-sec="${esc(s)}">${esc(SECM.get(s) ? SECM.get(s).title : s)}</button>`).join('');
+    el.querySelector('.detail').innerHTML = `<p class="body">${rich(x.body)}</p>${src ? `<div class="srcs">${src}</div>` : ''}${locate(el, els)}`;
+    el.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+  }
+  pick(els, true);
+}
+$('srcl').addEventListener('click', e => {
+  const el = e.target.closest('.sec');
+  if (!el || e.target.closest('a') || el.classList.contains('head')) return;
+  const loc = e.target.closest('.locs button');
+  if (loc) return flyGroup(el, +loc.dataset.li);
+  if (el.classList.contains('on')) { el.classList.remove('on'); return pick([], false); }
+  openSec([el.dataset.id], true);
+});
+$('issl').addEventListener('click', e => {
+  const el = e.target.closest('.isc');
+  if (!el) return;
+  const sb = e.target.closest('.srcs button'), loc = e.target.closest('.locs button');
+  if (sb) { setTab('src'); return openSec([sb.dataset.sec], true); }
+  if (loc) return flyGroup(el, +loc.dataset.li);
+  if (el.classList.contains('on')) { el.classList.remove('on'); return pick([], false); }
+  openIssue(el.dataset.id);
+});
+for (const id of ['srcl', 'issl']) $(id).addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('.sec, .isc')) e.target.click();
+});
+
+/* ---------- 用途の切り替え ---------- */
+const VKEY = 'spec-state-machine:variant:' + (M.slug || M.title);
+function setVar(v, save) {
+  VAR = VLABEL[v] ? v : '';
+  app.classList.toggle('vsel', !!VAR);
+  for (const b of $('vars').children) b.setAttribute('aria-pressed', String(b.dataset.v === VAR));
+  if (!save) return;
+  try { localStorage.setItem(VKEY, VAR); } catch (e) {}
+  select(null);
+}
+if (VARS.length) {
+  $('vars').hidden = false;
+  $('vars').innerHTML = '<button type="button" data-v="" aria-pressed="true">すべて</button>'
+    + VARS.map(v => `<button type="button" data-v="${esc(v.id)}" aria-pressed="false"><i style="--vc:${vcol(v.id)}"></i>${esc(v.label)}</button>`).join('');
+  $('vars').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setVar(b.dataset.v, true); });
+}
+
+/* ---------- 全履歴 ---------- */
+const DAY = 864e5, ms = s => Date.parse(s + 'T00:00:00Z');
+const firstDay = ms(TL[TL.length - 1].date), lastDay = ms(TL[0].date);
+const WEEK0 = firstDay - ((new Date(firstDay).getUTCDay() + 6) % 7) * DAY;
+const WEEKS = Math.floor((lastDay - WEEK0) / (7 * DAY)) + 1;
+const weekOf = e => Math.floor((ms(e.date) - WEEK0) / (7 * DAY));
+function evHtml(e, i) {
+  const h = HIST[e.sha], older = TL[i + 1], w = n => Math.max(2, Math.round(Math.log10(n + 1) * 7));
+  const tags = (e.tags || []).map(([k, n, gone]) => `<span class="t ${k}${gone ? ' gone' : ''}">${esc(n)}</span>`).join('');
+  return `<div class="ev${h ? ' sk' : ''}${e.type === 'c' ? ' bump' : ''}${e.sha === cur ? ' cur' : ''}" data-w="${weekOf(e)}" data-sha="${e.sha}">
+    <div class="m"><span>${e.date.slice(5)}</span>${e.ver && (!older || older.ver !== e.ver) ? `<span class="v">${esc(e.ver)}</span>` : ''}<span class="sz" title="+${e.add} −${e.del}"><i class="p" style="width:${w(e.add)}px"></i><i class="n" style="width:${w(e.del)}px"></i></span>${e.star ? '<span class="st">★</span>' : ''}${h ? `<span class="nc">${h.length}</span>` : ''}${link(e)}</div>
+    <div class="ti">${rich(e.title)}</div>${tags ? `<div class="tg">${tags}</div>` : ''}</div>`;
+}
+let hmode = 'star', asc = false;
+function renderTL() {
+  const q = $('q').value.trim().toLowerCase();
+  const hay = e => [e.sha, e.ver, e.pr, e.title, e.tags || '', HIST[e.sha] || ''].join(' ').toLowerCase();
+  const rows = TL.map((e, i) => [e, i]).filter(([e]) => (hmode === 'all' || (hmode === 'star' ? e.star : HIST[e.sha])) && (!q || hay(e).includes(q)));
+  if (asc) rows.reverse();
+  const per = {};
+  for (const [e] of rows) per[e.date.slice(0, 7)] = (per[e.date.slice(0, 7)] || 0) + 1;
+  let out = '', month = '';
+  for (const [e, i] of rows) {
+    const mo = e.date.slice(0, 7);
+    if (mo !== month) { month = mo; out += `<h2>${mo}<span>${per[mo]}</span></h2>`; }
+    out += evHtml(e, i);
+  }
+  $('tl').innerHTML = out;
+  $('tl').scrollTop = 0;
+}
+function spark() {
+  const X = 4, W = 318, H = 56, bw = W / WEEKS, wk = Array.from({ length: WEEKS }, () => ({ n: 0, s: 0 }));
+  const S = (M.series || []).slice(0, 2), vals = S.map(s => s.start || 0), line = Array(WEEKS).fill(null);
+  for (const e of [...TL].reverse()) {
+    const w = clamp(weekOf(e), 0, WEEKS - 1);
+    wk[w].n++; if (HIST[e.sha]) wk[w].s++;
+    for (const [k, , gone] of e.tags || []) { const j = S.findIndex(s => [].concat(s.k).includes(k)); if (j >= 0) vals[j] += gone ? -1 : 1; }
+    line[w] = [...vals];
+  }
+  let last = S.map(s => s.start || 0);
+  for (let i = 0; i < WEEKS; i++) line[i] = last = line[i] || last;
+  const max = Math.max(...wk.map(w => w.n)), top = Math.max(1, ...line.flat()) * 1.07, y = v => H - v / top * H;
+  const step = j => line.map((v, i) => i ? `H${(X + i * bw).toFixed(1)}V${y(v[j]).toFixed(1)}` : `M${X} ${y(v[j]).toFixed(1)}`).join('') + `H${X + W}`;
+  let g = '';
+  wk.forEach((w, i) => {
+    const x = X + i * bw + Math.min(1.5, bw * .15), bwid = Math.max(.6, bw - Math.min(3, bw * .3)), hn = w.n / max * H, hs = w.s / max * H;
+    if (w.n) g += `<rect class="bk" x="${x.toFixed(1)}" y="${(H - hn).toFixed(1)}" width="${bwid.toFixed(1)}" height="${hn.toFixed(1)}" rx="1.5"/>`;
+    if (w.s) g += `<rect class="bs" x="${x.toFixed(1)}" y="${(H - hs).toFixed(1)}" width="${bwid.toFixed(1)}" height="${hs.toFixed(1)}" rx="1.5"/>`;
+    if (w.n) g += `<rect class="hit" data-w="${i}" x="${(X + i * bw).toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${H}"><title>${w.n}</title></rect>`;
+  });
+  S.forEach((s, j) => {
+    g += `<path class="${j ? 'lp' : 'ls'}" d="${step(j)}"/><text class="${j ? 'tp' : 'ts'}" x="${X + W + 5}" y="${(y(vals[j]) + 3).toFixed(1)}">${vals[j]}</text>`;
+  });
+  const months = [], d = new Date(firstDay);
+  for (d.setUTCDate(1), d.setUTCMonth(d.getUTCMonth() + 1); d.getTime() <= lastDay; d.setUTCMonth(d.getUTCMonth() + 1)) months.push(new Date(d));
+  const every = Math.ceil(months.length / 7) || 1;
+  months.forEach((mo, i) => {
+    if (i % every) return;
+    g += `<text x="${(X + (mo.getTime() - WEEK0) / (7 * DAY) * bw).toFixed(1)}" y="${H + 14}">${mo.getUTCMonth() + 1}月</text>`;
+  });
+  $('spark').innerHTML = g;
+}
+function stop() { clearInterval(timer); timer = 0; $('play').textContent = '▶'; }
+$('segh').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  hmode = b.dataset.v;
+  for (const x of $('segh').children) x.setAttribute('aria-pressed', x === b);
+  renderTL();
+});
+$('q').addEventListener('input', renderTL);
+$('q').addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('q').blur();
+  else if (e.key === 'Enter') { $('q').blur(); hmove(1); }
+});
+function hmove(d) {
+  const rows = [...$('tl').querySelectorAll('.ev')];
+  if (!rows.length) return;
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  let i = rows.findIndex(r => r.classList.contains('kcur'));
+  if (i < 0) i = rows.findIndex(r => r.classList.contains('cur'));
+  i = i < 0 ? (d > 0 ? 0 : rows.length - 1) : clamp(i + d, 0, rows.length - 1);
+  rows.forEach((r, j) => r.classList.toggle('kcur', j === i));
+  rows[i].scrollIntoView({ block: 'nearest' });
+}
+function hopen() {
+  const r = $('tl').querySelector('.ev.kcur.sk');
+  if (r) r.click();
+}
+$('ord').addEventListener('click', () => { asc = !asc; $('ord').textContent = asc ? '⇅ 古い順' : '⇅ 新しい順'; renderTL(); });
+$('tl').addEventListener('click', e => {
+  if (e.target.closest('a')) return;
+  const ev = e.target.closest('.ev.sk');
+  if (!ev) return;
+  stop();
+  showAt(ev.dataset.sha, { fly: true });
+  setTab('now');
+});
+$('spark').addEventListener('click', e => {
+  const w = e.target.dataset && e.target.dataset.w;
+  const el = w && $('tl').querySelector(`.ev[data-w="${w}"]`);
+  if (el) el.scrollIntoView({ block: 'start', behavior: still.matches ? 'auto' : 'smooth' });
+});
+
+/* ---------- 時間軸 ---------- */
+const go = i => { stop(); if (SK.length) showAt(SK[clamp(i, 0, SK.length - 1)].sha, { fly: true }); };
+$('scrub').max = Math.max(0, SK.length - 1);
+$('scrub').addEventListener('input', () => { stop(); showAt(SK[+$('scrub').value].sha); });
+$('play').addEventListener('click', () => {
+  if (timer) return stop();
+  if (SK.length < 2) return;
+  let i = +$('scrub').value >= SK.length - 1 ? 0 : +$('scrub').value + 1;
+  view({ x: 0, y: 0, w: measure.w, h: measure.h }, { pad: 12 });
+  $('play').textContent = '❚❚';
+  const tick = () => { showAt(SK[i].sha); if (++i >= SK.length) stop(); };
+  tick(); timer = setInterval(tick, 900);
+});
+
+/* ---------- キー操作 ---------- */
+const KEYS = [
+  ...(HASH ? [
+    ['j k', 'カード・履歴の前後'], ['Enter', '履歴のコミットを開く'], ['J K', '未確認のカードの前後'], ['c', '確認済み'], ['n N', 'カードの該当箇所へ移動'], ['f', '選択中のカードを全体表示'],
+    ['h l', 'コミットを1件ずつ送る'], ['g G', '初版・最新版'], ['Space', '再生・停止'],
+    ['d', '差分・最新'], ['u', '未確認の絞り込み'],
+  ] : []),
+  ...(VARS.length ? [['v', '用途の切り替え']] : []),
+  ...(TABS.length > 1 ? [['t', HASH && TABS.length === 2 ? '更新・全履歴' : 'タブの切り替え']] : []),
+  ...(HASH ? [['s', '検索']] : []),
+  ...(TABS.length ? [['/', 'パネルの開閉']] : []),
+  ['+ − 0', '拡大・縮小・全体'], ['← ↑ ↓ →', '移動'], ['Esc', '解除'], ['?', 'キー操作の一覧'],
+];
+$('keys').innerHTML = KEYS.map(([ks, t]) => `<span class="ks">${ks.split(' ').map(x => `<kbd>${esc(x)}</kbd>`).join('')}</span><span>${t}</span>`).join('');
+$('keys').addEventListener('click', () => { $('keys').hidden = true; });
+$('khelp').addEventListener('click', () => { $('keys').hidden = !$('keys').hidden; });
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key, tag = e.target.tagName, step = 80, si = +$('scrub').value;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || (k === ' ' && tag === 'BUTTON')) return;
+  const inAll = $('drawer').dataset.tab === 'all' && !app.classList.contains('closed');
+  if (inAll && (k === 'j' || k === 'k')) hmove(k === 'j' ? 1 : -1);
+  else if (inAll && k === 'Enter' && tag !== 'BUTTON') hopen();
+  else if (k === '+' || k === '=') centerZoom(1.3);
+  else if (k === '-') centerZoom(1 / 1.3);
+  else if (k === '0') fitAll();
+  else if (k === 'j') hop(1);
+  else if (k === 'k') hop(-1);
+  else if (k === 'J' || k === 'K') hop(k === 'J' ? 1 : -1, true);
+  else if (k === 'c') { if (!active) return; toggle(active); }
+  else if (k === 'f') { if (!active) return; select(active); }
+  else if (k === 'n' || k === 'N') {
+    const bs = [...document.querySelectorAll('.card.on .locs button')];
+    if (!bs.length) return;
+    locAt = ((locAt + (k === 'n' ? 1 : locAt < 0 ? 0 : -1)) % bs.length + bs.length) % bs.length;
+    bs[locAt].click();
+  }
+  else if (k === 'h' || k === 'l') { stop(); if (SK.length) showAt(SK[clamp(si + (k === 'l' ? 1 : -1), 0, SK.length - 1)].sha); }
+  else if (k === 'g') go(0);
+  else if (k === 'G') go(SK.length - 1);
+  else if (k === ' ') $('play').click();
+  else if (k === 'd') { if (HASH) $('segdiff').querySelector('[aria-pressed="false"]').click(); }
+  else if (k === 'u') $('todo').click();
+  else if (k === 'v') { if (!VARS.length) return; const ids = ['', ...VARS.map(v => v.id)]; setVar(ids[(ids.indexOf(VAR) + 1) % ids.length], true); }
+  else if (k === 't') setTab(TABS[(TABS.indexOf($('drawer').dataset.tab) + 1) % TABS.length]);
+  else if (k === 's') { if (!HASH) return; openDrawer(true); setTab('all'); $('q').focus(); }
+  else if (k === '/') { if (TABS.length) $('dtoggle').click(); }
+  else if (k === '?') $('keys').hidden = !$('keys').hidden;
+  else if (k === 'Escape') { if (!$('keys').hidden) $('keys').hidden = true; else select(null); }
+  else if (k === 'ArrowLeft') { halt(); tx += step; apply(); }
+  else if (k === 'ArrowRight') { halt(); tx -= step; apply(); }
+  else if (k === 'ArrowUp') { halt(); ty += step; apply(); }
+  else if (k === 'ArrowDown') { halt(); ty -= step; apply(); }
+  else return;
+  e.preventDefault();
+});
+
+/* ---------- 起動 ---------- */
+app.classList.toggle('nohist', !HASH);
+app.classList.toggle('nopanel', !TABS.length);
+{
+  // 使用しないタブは DOM から除かずに退避する (tabver・tabn などを起動時に参照するため、また角丸を :first-child で決めるため)。
+  const stash = document.createElement('div');
+  stash.hidden = true;
+  for (const b of [...$('tabs').children]) if (!TABS.includes(b.dataset.tab)) stash.append(b);
+  app.append(stash);
+}
+$('tabsrc').textContent = SEC.length; $('tabiss').textContent = ISS.length;
+if (TABS.length) setTab(TABS[0]);
+if (SEC.length) renderSrc();
+if (ISS.length) renderIss();
+if (!wide.matches || !TABS.length) app.classList.add('closed');
+try { setVar(localStorage.getItem(VKEY) || '', false); } catch (e) {}
+palette();
+if (HASH) { renderTL(); spark(); }
+showAt((SK[SK.length - 1] || TL[0]).sha);
+sc = Math.max(Math.min(avail().w / world.offsetWidth, avail().h / world.offsetHeight), .6); tx = 0; ty = 0;
+apply();
+const remeasure = () => { drawWires(); measure(); drawMini(); };
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+addEventListener('resize', remeasure);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { palette(); drawMini(); });
+</script>
+</body>
+</html>

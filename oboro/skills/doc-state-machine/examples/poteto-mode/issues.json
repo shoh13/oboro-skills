@@ -1,0 +1,58 @@
+[
+ {
+  "id": "i4",
+  "type": "ambiguous",
+  "title": "Session overrides の継続と Always pause の停止の優先",
+  "body": "「Session overrides」の節は、「Don't stop」「going to bed」「run until done」「be fully autonomous」の指示がある場合は作業を継続すると記載し、「Always pause」の節は、不可逆な書き込み（共有ブランチへの force-push、デプロイ、データ削除、顧客へのメッセージ）では必ず停止すると記載している。これらの指示の下で不可逆な書き込みに該当する操作を実施する場合に、停止するか継続するかを記載していない。",
+  "src": "poteto-mode/autonomy/session-overrides poteto-mode/autonomy/always-pause"
+ },
+ {
+  "id": "i7",
+  "type": "ambiguous",
+  "title": "独自の subagent_type を指定するスキルの列挙が全件か例示か",
+  "body": "「Use subagent_type: \"poteto-agent\" ...」の節は、プレイブックのステップ内で直接起動するサブエージェントに poteto-agent を指定し、例外として、独自の subagent_type を指定する routed workflow skills に interrogate・swarm を列挙している。「Defaults for every Task call」の節は、/setup-pstack のルールの役割ごとの行がモデルを上書きする routed skills に arena・swarm・interrogate を列挙している。前者の列挙が全件か例示かを記載しておらず、arena が起動するサブエージェントに poteto-agent を指定するかを判断できない。",
+  "src": "poteto-mode/subagents/use-subagenttype-poteto-agent-for-any-subagent-you-spawn poteto-mode/subagents/defaults-for-every-task-call"
+ },
+ {
+  "id": "i8",
+  "type": "gap",
+  "title": "UI・IDE・CLI と control スキルの対応",
+  "body": "「Shipping UI / IDE / CLI」の節は、UI・IDE・CLI の出荷時に cursor-team-kit の control-ui か control-cli を使用すると記載し、どの対象にどちらを使用するかを記載していない。スキルの名前から UI は control-ui、CLI は control-cli と推定できるが、IDE に該当するスキルを判断できない。",
+  "src": "poteto-mode/non-negotiables/shipping-ui-ide-cli"
+ },
+ {
+  "id": "i9",
+  "type": "gap",
+  "title": "各プレイブックの対象と、複数のプレイブックに該当するタスクの選択",
+  "body": "「Playbooks」の節は、タスクに該当するプレイブックを選択すると規定し、22件のプレイブックを名前だけで列挙している。選択の優先として、大規模・横断的・不在中の作業と、該当するプレイブックがない作業を figure-it-out の対象とすることだけを記載している。各プレイブックが対象とするタスクと、複数のプレイブックに該当するタスクの選択を記載していない。図の「依頼を分類」の各枝は、条件をプレイブックの名前で記載した。",
+  "src": "poteto-mode/playbooks"
+ },
+ {
+  "id": "i10",
+  "type": "note",
+  "title": "状態の名前と順序は作成者の構成",
+  "body": "原文は、起動条件（Non-negotiables）、原則（Principles）、自律実行（Autonomy）、サブエージェント（Subagents）、返答の書き方（Writing the reply）、プレイブック（Playbooks）の節で構成し、作業の局面と局面の順序を定義していない。図の上段の13状態の名前と順序、「随時」の8状態の名前は作成者の構成である。「壊れたスキルを発見」の状態は、2f87c854fe で全ての枝の規定が削除され、それより前の時点だけで表示する。各規定は、条件が該当する局面の状態に配置した。1つの節の規定を複数の状態に分割した箇所がある。「First message」は「最初のメッセージ」「PRを作成」「返答」「作業を委任」に、「Non-negotiables」の冒頭は「/poteto-mode」「返答」に、「Code」は「設計」「実装」「作業を委任」に、「Prose, your reply included」は「文章を書く」「コミット前」「PRを作成」に、「Before commit」は「コミット前」「レビュー前」に、「PR status」は「PRを仕上げる」「マージ」に、「Use subagent_type: \"poteto-agent\" ...」は「/poteto-mode」「作業を委任」に、「Defaults for every Task call」と、その段落に続く既定値の一覧を含む「Subagents」の節の本文は「作業を委任」「モデルを選択」に、「Match the model to the job」は「モデルを選択」「識別子が拒否された」に、「Playbooks」は「依頼を分類」「ToDoを作成」「PRを作成」に分割した。",
+  "src": "poteto-mode/non-negotiables poteto-mode/principles poteto-mode/autonomy poteto-mode/subagents poteto-mode/writing-the-reply poteto-mode/playbooks"
+ },
+ {
+  "id": "i11",
+  "type": "note",
+  "title": "返答の文体の規則3件を1つの枝に集約",
+  "body": "「Writing the reply」の節の1文目の3件の規則（短い平叙文で記載する、長いダッシュを使用しない、接続のコロンを使用しない）は、原文が1文で記載しているため、「返答」の状態の「返答を書く → 短い平叙文。長いダッシュと接続のコロンを使用しない」の1つの枝に集約した。節のほかの3文（ユーザーにとって変化する点から記載する、各主張に根拠か確度を付記する、実行できる確認を人間に依頼しない）は個別の枝とした。",
+  "src": "poteto-mode/writing-the-reply"
+ },
+ {
+  "id": "i12",
+  "type": "note",
+  "title": "モデルの遷移先は役割の既定の識別子",
+  "body": "「モデルを選択」の状態のモデルの識別子の遷移先（claude-opus-5-5-xhigh-fast、claude-opus-5-5-high-fast、パネルの3件）は、「Defaults for every Task call」の段落に続く既定値の一覧（節の抽出では「Subagents」の節の本文）が記載する役割の既定の識別子である。「Defaults for every Task call」の節は役割ごとの行が既定値を上書きすると規定し、「Match the model to the job」の節は役割の行または既定値から開始し、系列を維持して仕事に必要なレベルを設定すると規定しているため、使用する識別子は遷移先と相違する場合がある。例えば、文章と判断の役割の判断の仕事は、推論レベルを1段階低下させた識別子となる。パネルの席は記載のレベルを維持する。",
+  "src": "poteto-mode/subagents poteto-mode/subagents/defaults-for-every-task-call poteto-mode/subagents/match-the-model-to-the-job"
+ },
+ {
+  "id": "i13",
+  "type": "note",
+  "title": "図に枝として記載していない規定",
+  "body": "次の規定は、該当する節を枝の根拠としているが、図に枝として記載していない。「Just do it」の節の、任意の MCP ツールの使用。「Defaults for every Task call」の節の、/setup-pstack が ~/.cursor/rules/pstack-models.mdc を出力し、その役割ごとの行が既定値と routed skills（arena・swarm・interrogate）の役割のモデルを上書きし、行のない役割は既定値を維持するとする規定。",
+  "src": "poteto-mode/autonomy/just-do-it poteto-mode/subagents/defaults-for-every-task-call"
+ }
+]

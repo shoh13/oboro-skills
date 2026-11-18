@@ -1,0 +1,64 @@
+{
+  "title": "Potetoモード状態機械",
+  "slug": "poteto-state-machine",
+  "name": "poteto-mode",
+  "brand": "pstack",
+  "source": {
+    "title": "poteto-mode SKILL.md",
+    "url": "https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md"
+  },
+  "repoUrl": "https://github.com/cursor/plugins",
+  "file": "pstack/skills/poteto-mode/SKILL.md",
+  "fileLabel": "SKILL.md",
+  "anyLabel": "随時",
+  "areas": [
+    "起動条件",
+    "原則",
+    "自律実行",
+    "サブエージェント",
+    "返答",
+    "プレイブック",
+    "その他",
+    "対象ファイルの外"
+  ],
+  "legend": [
+    [
+      "skill",
+      "スキル"
+    ],
+    [
+      "prin",
+      "原則"
+    ],
+    [
+      "pb",
+      "プレイブック"
+    ],
+    [
+      "act",
+      "動作"
+    ],
+    [
+      "stop",
+      "停止"
+    ],
+    [
+      "m",
+      "値"
+    ]
+  ],
+  "series": [
+    {
+      "k": [
+        "skill",
+        "prin"
+      ],
+      "start": 29
+    },
+    {
+      "k": "pb",
+      "start": 12
+    }
+  ],
+  "extract": "curl -sS https://raw.githubusercontent.com/cursor/plugins/2f87c854fe/pstack/skills/poteto-mode/SKILL.md -o <原文>\nnode scripts/extract-md.mjs <原文> --items --arrows --tab SKILL.md --url https://github.com/cursor/plugins/blob/2f87c854fe/pstack/skills/poteto-mode/SKILL.md"
+}

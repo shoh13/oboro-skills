@@ -1,0 +1,48 @@
+{
+"flow": [
+  { "state": "入口", "rules": [
+    {"g":"Web からの要求","to":[["state","受付"]],"for":["web"],"src":"s0"},
+    {"g":"端末からの要求","to":[["state","受付"]],"for":["dev"],"src":"s0"}
+  ] },
+  { "state": "受付",
+    "rules": [
+      {"g":"検証を通過","to":[["act","受け付ける"],["state","発行"]],"for":["web","dev"],"src":"s2 s5","inferred":"原文は通過後の遷移を明記していない"},
+      {"g":"POST リクエスト","to":[["act","受け付ける"]],"for":["web"],"src":"s2","inferred":"原文は Web 用の POST を明記していない"},
+      {"g":"署名の検証","to":[["act","実施"]],"for":["dev"],"src":"s5","level":"should","issue":"i3","gap":true},
+      {"g":"旧方式","to":[["act","対応"]],"for":["dev"],"src":"s5","level":"deferred"},
+      {"g":"新方式","to":[["act","試験的に対応"]],"for":["web"],"src":"s2","level":"trial","inferred":"検証用の例"},
+      {"g":"拡張ヘッダ","to":[["act","対応してもよい"]],"for":["web"],"src":"s2","level":"may","inferred":"検証用の例"}
+    ],
+    "errors": [
+      {"g":"POST リクエスト","to":[["stop","受け付けない"]],"for":["dev"],"src":"s5"},
+      {"g":"id なし","to":[["stop","エラー"]],"for":["web"],"src":"s2","std":["strict","RFC 9999 では任意"],"why":["RFC 9999","§3 の規定"]},
+      {"g":"id が3文字未満","to":[["stop","エラー"]],"for":["web"],"src":"s2","issue":"i1"},
+      {"g":"id に空白を含む","to":[["stop","エラー"]],"for":["web"],"src":"s2","std":["eq"],"why":"RFC 9999","inferred":"検証用の例"},
+      {"g":"id が256文字超","to":[["stop","400 エラー"]],"for":["web","dev"],"src":"s2","std":["dev","RFC 9999 では無視すると規定"],"inferred":"検証用の例"}
+    ]
+  },
+  { "state": "発行", "rules": [
+    {"g":"受付の完了","to":[["ticket","整理券","受付後に発行する"],["m","30 分"]],"for":["web","dev"],"src":"s3"},
+    {"g":"整理券の更新","to":[["state","更新"]],"for":["web"],"src":"s4"}
+  ] }
+],
+"any": [
+  { "state": "更新",
+    "rules": [
+      {"g":"更新の完了","to":[["state","発行"]],"for":["web"],"src":"s4","inferred":"原文は更新後の遷移を明記していない"}
+    ],
+    "table": {
+      "rows": { "label": "利用者", "values": ["会員・期限の設定あり", "会員・期限の設定なし", "非会員"] },
+      "cols": { "label": "契機", "values": ["発行時", "使用時"] },
+      "cells": [
+        { "r": 0, "c": 0, "to": [["m", "7 日"]], "for": ["web"], "src": "s4" },
+        { "r": 0, "c": 1, "to": [["act", "延長しない"]], "for": ["web"], "src": "s4" },
+        { "r": 1, "c": 0, "na": "期限の設定がない場合は発行時の規定の対象外" },
+        { "r": 1, "c": 1, "issue": "i2" },
+        { "r": 2, "c": 0, "to": [["m", "1 日"]], "for": ["web"], "src": "s4" },
+        { "r": 2, "c": 1, "to": [["act", "期限を短縮"]], "for": ["web"], "src": "s4" }
+      ]
+    }
+  }
+]
+}

@@ -1,0 +1,258 @@
+{
+"24bd6eb895": [
+  ["a",0,"frontmatter の起動設定","","poteto、`/poteto-mode`、この作業様式での作業依頼を対象とする。`disable-model-invocation: true` により、モデルによる自動起動は無効。"],
+  ["a",6,"多段階タスクの冒頭で Principles 節を読む規則","","多段階タスクは、Principles 節の全文を読む項目を先頭に置いた todolist で開始する。返答では、判断に影響した原則と、それにより変更した具体的な選択を記載する。具体的な判断を伴わない原則の引用は、個別スキルを読まなかった証拠とみなす。"],
+  ["a",0,"Non-negotiables の起動条件一覧","","非自明な変更・設計判断・「本当に大丈夫か」→ `how`。コード全般 → 先にデータ形状を命名。関数境界をまたぐ変更 → `architect`。議論のある設計 → `interrogate`。非自明な多段階作業 → スループットのチェックポイント (Feature 手順 3)。文章全般 → `unslop` (エージェント向け文章は `create-skill` にも準拠)。コミット前 → `deslop`。UI / IDE / CLI の出荷 → `control-cli` / `control-ui`。PR 作成後 → `babysit`。作業中に壊れたスキル → 停止せず別 PR で修正。"],
+  ["a",1,"原則 18 件の一覧","","Core: Laziness Protocol、Foundational Thinking、Redesign from First Principles、Subtract Before You Add、Minimize Reader Load、Outcome-Oriented Execution、Experience First、Exhaust the Design Space。Architecture: Boundary Discipline、Type System Discipline、Make Operations Idempotent、Migrate Callers Then Delete Legacy APIs、Separate Before Serializing Shared State。Verification: Prove It Works、Fix Root Causes。Delegation: Guard the Context Window、Never Block on the Human。Meta: Encode Lessons in Structure。適用する原則は個別スキルの全文を読む。"],
+  ["a",2,"Autonomy 節","","可逆な作業と外部操作 (チームチャット、チケット更新、評価の起動) は確認せずに実施する。不可逆な書き込み (共有ブランチへの force-push、デプロイ、データ削除、顧客向けメッセージ) は必ず停止する。「止まるな」「寝る」等の指示があれば継続する。是非を問われた場合は迎合せず本心の判断を返し、不要なら断る。"],
+  ["a",3,"Subagents 節","","プレイブック内で直接起動するサブエージェントは `poteto-agent` とし、`how` / `why` / `interrogate` / `reflect` は各スキルの指定に従う。`Task` の既定は `run_in_background: true`、agent モード、文脈はファイルポインタで渡し、モデルを明示 (コードは `composer-2.5-fast`、文章と判断は `claude-opus-4-7-thinking-xhigh`)。サブエージェントの成果は自分で差分を確認して要約し、中断連鎖の再開ではなく新しいサブエージェントを起動する。セカンドオピニオンは同じプロンプトを別モデルで実行する。"],
+  ["a",4,"Writing the reply 節","","下書きの時点で清書する (事後の除去は失敗する)。短い平叙文、長いダッシュの全面禁止、文中の接続としてのコロンの禁止、簡潔さを理由に必要な節を省略しない、リンク・引用・トランスクリプト参照を捏造しない。全プレイブックの返答は PR リンクを `https://github.com/<owner>/<repo>/pull/<number>` 形式で記載する。"],
+  ["a",4,"Comments 節","","コメントも返答と同じ規則で書く。検証・テストスクリプトの段階を説明するコメントは書かず、アサーションやログ文字列で記述する。委任先の差分を含む全ファイルが対象で、コードが示せない自明でない理由だけをコメントに残す。"],
+  ["a",5,"プレイブック 12 件と選択規則","","タスクに合うプレイブックを選択し、その手順を推論前に todolist の先頭へ逐語で複写する。実施しない手順は `skip: <理由>` を付けて残す。一覧: Investigation、Bug fix、Perf issue、Runtime forensics、Feature、Prototype、Visual parity、Authoring or modifying a skill、Eval、Autonomous run、Multi-phase or multi-PR plan、Opening a PR。"],
+  ["a",0,"UI・IDE・CLI のバグ修正は自分で同じ操作面から再現","","UI・IDE・CLI の出荷では、バグ修正を自分で同じ操作面から先に再現する。利用者への引き渡しは、Bug fix のステップ1の限定的な例外に限定する。"]
+],
+"35f33923cd": [
+  ["a",0,"`show-me-your-work` による判断記録の起動条件を追加","","長時間・自律・多段階の作業、またはユーザーが離席して後で確認する作業 (「寝る」「戻ったら信頼する」「/loop until X」) では、`show-me-your-work` で判断の記録を残す。監査可能な記録が必要な場合はコミットし、それ以外はローカルに保持する。"],
+  ["a",5,"`figure-it-out` への振り分けを追加","","大規模・横断的な作業 (多数の呼び出し箇所の移行、野心的な複数部分の変更) や、ユーザーが離席して後で信頼する作業は、Feature 等が該当しそうでも `figure-it-out` に振り分ける。同梱のプレイブックが適合しない場合も `figure-it-out` を使用し、タスク専用のプレイブックを設計する。"]
+],
+"f18ffc1bd6": [
+  ["a",5,"`Refactoring` プレイブックを追加","","振る舞いを維持したまま構造や形を変更する作業 (rename、extract、inline、dedupe、move) を対象とする。手順は `playbooks/refactoring.md`。"]
+],
+"bbc0d75eb2": [
+  ["a",5,"`Trace forensics` プレイブックを追加","","事後に渡された取得済みのプロファイリング成果物 (cpuprofile、trace、spindump、heap snapshot) を診断する作業を対象とする。成果物は修正ではなく診断。手順は `playbooks/trace-forensics.md`。"],
+  ["a",5,"`Session pickup` プレイブックを追加","","トランスクリプト、クラウドエージェントの URL、push 済みブランチから、以前のエージェントの進行中の作業を再開・引き継ぐ作業を対象とする。手順は `playbooks/session-pickup.md`。"]
+],
+"7b1c32e4c3": [
+  ["a",1,"Core に `Build the Lever` を追加","","`principle-build-the-lever`。反復的・大量の作業に適用する。手順が判明した時点で、手作業を続けずに作業を償却する道具 (codemod、スクリプト、ジェネレーター) を作成する。"]
+],
+"ec44aed93c": [
+  ["c",3,"文章・判断用モデルを `claude-opus-4-8-thinking-xhigh` に変更","`Task` 呼び出しの既定モデルは、コードに `composer-2.5-fast`、文章と判断に `claude-opus-4-7-thinking-xhigh`。","文章と判断のモデルを `claude-opus-4-8-thinking-xhigh` に変更。コード用の `composer-2.5-fast` は変更なし。"]
+],
+"ba7781cce6": [
+  ["c",1,"`Build the Lever` の適用範囲を非自明な作業全般に拡大","反復的・大量の作業に適用し、手順が判明した時点で作業を償却する道具 (codemod、スクリプト、ジェネレーター) を作成する。","非自明な作業すべてに適用する。手作業ではなく、作業を実施するか証明する道具 (codemod、スクリプト、ジェネレーター) を作成する。その道具はレビュアーが再実行できる成果物とする。"]
+],
+"c532aa167c": [
+  ["a",4,"利用者と保守者への影響を示す規則を追加","","実装の詳細より先に、作業の対象者 (エンドユーザー、ライブラリを import する同僚) と、その人にとって何が変わるかを記載する。次に、このコードを引き継ぐ次の技術者が何を受け継ぐかを記載する。どちらが気付く変化も説明できない場合は、作業か説明に問題がある。"]
+],
+"f7e01457bb": [
+  ["c",6,"全体の文言の整理と短縮","原則の各項目は「The X skill. Apply when ...」の形式。返答規則・Autonomy・Playbooks 節に補足説明や重複文 (長いダッシュを使う理由、「理由付きの skip は可」、選択手順の再掲、各プレイブックの「Full steps:」) を含む。","原則の各項目を「名前 (スキル名). 適用場面. 動作」の形式に短縮し、適用場面を示す旨を節の冒頭に追加。補足説明と重複文を削除し、各節の文を短縮。指示の条件と動作は変更なし。"]
+],
+"2f3a47e6c4": [
+  ["a",5,"`Pause safely` プレイブックを追加","","明示的な一時停止、オフライン化、Cursor の再起動、間近のコンテキスト圧縮の際に、進行中の作業を再開可能な状態で中断する作業を対象とする。`Session pickup` と対をなす。手順は `playbooks/pause-safely.md`。"]
+],
+"97d645a601": [
+  ["a",0,"Bugbot 等のレビューコメントへの対応を追加","","Bugbot または agentic security reviewer がコメントした場合は懐疑的に対応する。実際のバグと同時に非問題や些末な指摘も出すため、各指摘を個別に評価し、ノイズは具体的な理由を付けて却下し、コードを無用に変更しない。修正・却下・質問の振り分けは `babysit` で実施する。"]
+],
+"6605d7adc3": [
+  ["c",3,"役割別モデルを `/setup-pstack` で設定可能に変更","`Task` 呼び出しはモデルを明示し、コードに `composer-2.5-fast`、文章と判断に `claude-opus-4-8-thinking-xhigh` を使用する。","役割ごとにモデルを明示し、そのモデルは `/setup-pstack` で設定可能とする。既定値はコードに `composer-2.5-fast`、文章と判断に `claude-opus-4-8-thinking-xhigh`。"],
+  ["c",6,"文言の整理","Bugbot の起動条件で「agentic security reviewer」と記載。","「agentic security review」に表記を変更。指示内容は変更なし。"]
+],
+"27daaa3091": [
+  ["a",1,"Verification に `Sequence Work into Verifiable Units` を追加","","`principle-sequence-verifiable-units`。多段階の作業 (一括修正、移行、類似編集の連続) と、コミット・PR の積み方に適用する。作業を検査で終わる小さな単位に分割し、各単位を検証してから次へ進み、順序自体が正しさを証明するように納品を並べる。"]
+],
+"318e8f74cc": [
+  ["a",0,"`AskQuestion` 前に問いを分類する規則を追加","","「どの方式か」「どうすべきか」「何をすべきか」の分岐で `AskQuestion` する前に問いを分類する。実行して観察できる事実 (振る舞い、時間、レイアウト、出力、性能、評価が差を示すか) は人に問わず、Prototype プレイブックで試作して結果で決定する。読み取り専用の Investigation では試作せず証拠から回答する。質問は、実験で決まらない製品判断・好みの判断に限定する。"],
+  ["c",5,"`Prototype` の対象に経験的な分岐の決着を追加","実装前に設計判断を安価に下すための使い捨ての試作 (「prototype」「mock it up」「try this layout」)。","設計または振る舞いの判断を安価に下すため、または人に問わず観察で経験的な分岐を決着させるための使い捨ての試作。起動語に「sketch it to decide」を追加。"]
+],
+"b64f02a456": [
+  ["a",5,"`Hillclimb` プレイブックを追加","","1 つの指標を目標に向けて継続的・科学的に改善する作業を対象とする。仮説を前後の計測、判断ログ、採用した改善ごとに 1 コミットで反復する。単発の修正である Perf issue とは区別する。手順は `playbooks/hillclimb.md`。"]
+],
+"dc2fae6625": [
+  ["c",3,"コード担当の既定モデルを `grok-4.5-fast-xhigh` へ変更","`Task` 呼び出しのモデルは役割ごとに明示し (`/setup-pstack` で設定可能)、既定はコードに `composer-2.5-fast`、文章と判断に `claude-opus-4-8-thinking-xhigh` を使用する。","コードの既定モデルを `grok-4.5-fast-xhigh` に変更する。文章と判断の既定 `claude-opus-4-8-thinking-xhigh` は維持する。"]
+],
+"9b80b53498": [
+  ["a",3,"最難度の変更を `claude-fable-5-thinking-max` へ振り分け","","最も難しい変更 (横断的な設計、複雑な並行処理、精妙なアルゴリズム、意図が曖昧なもの) は `claude-fable-5-thinking-max` に委任する。"]
+],
+"0dda29e839": [
+  ["a",6,"常駐モードとしての設定と表示属性を追加","","frontmatter に `mode: true` を追加し、poteto-mode を常駐 (sticky) モードにする。表示用に `icon: crown` と `color: yellow` を設定する。"],
+  ["a",0,"モード適用を判定する条件付きリマインダーを追加","","frontmatter の `reminder` で、新しいタスクがプレイブックに該当するか厳密さを要する場合は /poteto-mode を適用し、雑談的なターンやユーザーが不要と表明した場合は適用しないよう促す。"]
+],
+"a8145426e5": [
+  ["a",1,"`principle-model-the-domain` を Architecture に追加","","状態を持つロジック、分岐の多いコード、複数ファイルで同じ形状の前提を繰り返すコードを書く場合に適用する。散在する条件分岐の代わりに、状態機械・型付きモデル・表やレジストリ・reducer・境界・適切なコレクションなどの構造でドメインを表現する。"]
+],
+"9d2a3f2d12": [
+  ["c",6,"スキルの `name` を表示名 `Poteto Mode` へ変更","frontmatter の `name` は `poteto-mode`。","frontmatter の `name` を人が読む表示名 `Poteto Mode` に変更する。"]
+],
+"3fe2823ce1": [
+  ["c",0,"コード作成時に `principle-model-the-domain` で構造を選定","コードを書く場合は、最初にデータの形状を命名する。","コードを書く場合は、最初にデータの形状を命名し、その組織化の構造を **principle-model-the-domain** に従って選定する。"],
+  ["c",0,"`interrogate` の説明を multi-model へ修正","設計に異論がある場合は出荷前に **interrogate** スキル (four-model adversarial) を使用する。","同じ条件で **interrogate** スキルを使用し、説明を「multi-model adversarial」に修正する。"],
+  ["c",3,"コード委任を難易度で3段階に振り分け","最も難しい変更 (横断的な設計、複雑な並行処理、精妙なアルゴリズム、意図が曖昧なもの) は `claude-fable-5-thinking-max` に委任する。","コード委任を難易度で振り分ける。最難度の変更は、判断を要するか意図が曖昧なら最強の判断モデル (`claude-fable-5-thinking-max`)、厳密に指定された手順を文字どおり実行する作業なら最強の指示追従モデルへ委任し、自明な機械的編集は高速なコードモデルへ委任する。"],
+  ["a",3,"`/setup-pstack` の役割行による既定値の上書きを規定","","`/setup-pstack` ルールの役割ごとの行は、この既定値と、振り分け先スキル (`how`、`why`、`arena`、`architect`、`interrogate`、`reflect`) のモデル選択を上書きする。行のない役割は既定値を維持する。"]
+],
+"63432f3196": [
+  ["c",3,"モデル指定を `/setup-pstack` ルールの役割行に基づく方式へ変更","役割ごとにモデルを明示し (`/setup-pstack` で設定可能)、既定はコードに `grok-4.5-fast-xhigh`、文章と判断に `claude-opus-4-8-thinking-xhigh` を使用する。","`/setup-pstack` ルールから役割ごとのモデルを取得し、実在する識別子を `model` に渡す。役割の行がない場合は、コードに `grok-4.5-fast-xhigh`、文章と判断に `claude-opus-4-8-thinking-xhigh` を既定とする。"],
+  ["a",3,"`inherit-parent`/`auto` では `model` を省略","","役割の値が `inherit-parent` または `auto` の場合は `model` を省略し、サブエージェントに親チャットのモデルを継承させる。"]
+],
+"e1007b141f": [
+  ["c",3,"文章と判断の既定モデルを `claude-fable-5-thinking-max` へ変更","役割の行がない場合、文章と判断の既定は `claude-opus-4-8-thinking-xhigh`。","役割の行がない場合、文章と判断の既定を `claude-fable-5-thinking-max` に変更する。コードの既定 `grok-4.5-fast-xhigh` は維持する。"],
+  ["c",3,"最強の指示追従モデルに `gpt-5.6-sol-max` を明記","厳密に指定された手順を文字どおり実行する最難度の作業は、最強の指示追従モデルへ委任する (モデル名の指定なし)。","同じ作業の委任先として `gpt-5.6-sol-max` を明記する。"]
+],
+"04166ac891": [
+  ["c",3,"モデル解決の指示を役割行の定義へ集約","`/setup-pstack` ルールから役割ごとのモデルを取得し、実在する識別子を `model` に渡す。`inherit-parent`/`auto` の場合は `model` を省略し、役割の行がない場合は既定 (コードに `grok-4.5-fast-xhigh`、文章と判断に `claude-fable-5-thinking-max`) を使用する。","役割ごとにモデルを明示し (`/setup-pstack` で設定可能、既定は同じ2モデル)、実在する識別子を渡す指示は削除する。役割の行が `inherit-parent` または `auto` の場合は、その役割を親チャットのモデルで実行する (`Task` の `model` を省略) という定義を上書き規則の末尾に置く。"]
+],
+"b79f8ca89e": [
+  ["a",0,"並列展開を `swarm` へ、設計比較を `arena` へ振り分け","","並列展開 (カバレッジ行列、競争、ガントレット、探索の分割) には **swarm** スキルを使用する。基準案の選定と接ぎ木を伴う設計またはコードの比較には **arena** を使用する。"],
+  ["c",3,"役割行で上書きするスキルに `swarm` を追加","`/setup-pstack` の役割行は、`how`、`why`、`arena`、`architect`、`interrogate`、`reflect` のモデル選択を上書きする。","上書き対象に `swarm` を追加する。"]
+],
+"91dd7b7119": [
+  ["c",3,"独自の `subagent_type` を持つスキルに `swarm` を追加","振り分け先のワークフロースキル (`how`、`why`、`interrogate`、`reflect`) は多様なモデルによるレビューのため独自の `subagent_type` を設定し、`poteto-agent` で上書きしない。","同じ扱いの対象に `swarm` を追加する。"]
+],
+"b047069f4f": [
+  ["a",0,"文書類の作成を `technical-writing` へ振り分け","","ドキュメント、RFC、README、PR の説明、コミットメッセージを書く場合は **technical-writing** スキル (`/technical-writing`) を使用する。"],
+  ["a",0,"レビュー前に `no-comments` を実施","","レビューに出す前に **no-comments** スキル (`/no-comments`) を使用する。"],
+  ["a",5,"`Autopilot-full` プレイブックを追加","","独立した PR のキューを完全自律でマージまで進める場合に `playbooks/autopilot-full.md` を使用する。PR ごとに1人の担当がビルドからマージまで受け持ち、ルートがマージ可能な各 head を swarm で検証してから担当がマージする。"],
+  ["a",5,"`Autopilot-stack` プレイブックを追加","","変更のキューを完全自律で構築・検証し、運用者が自分でマージする1本の直線的なレビュー済み Graphite スタックとして納品する場合に `playbooks/autopilot-stack.md` を使用する。"]
+],
+"99559f2f52": [
+  ["c",0,"PR 状況の依頼を `Babysit` プレイブックへ振り分け","PR を開いた後は Cursor 組み込みの **babysit** スキルを使用する。","PR の状況に関する依頼 (「babysit this」「get it green」「bugbot のコメントに対応」「check on PR X」など) は、組み込みの babysit スキルではなく **Babysit** プレイブック (`playbooks/babysit.md`) を使用する。PR を開いただけでは起動しない。ポーリング前にモードを宣言し、フェーズエージェント内で `drive` を使用しない (ターンを完了できなくなるため)。"],
+  ["a",0,"グリーンのスタックの出荷を `Shipping` へ振り分け","","グリーンのスタックのマージや出荷を依頼された場合は **Shipping** プレイブック (`playbooks/shipping.md`) を使用する。グリーンでも安全とみなさず、PR ごとの独立した判定の前には何も有効化せず、ルートから連続して検証済みの範囲だけをマージする。"],
+  ["c",0,"Bugbot 指摘の選別基準を `references/bugbot-triage.md` へ変更","Bugbot やエージェントによるセキュリティレビューの指摘は、組み込みの **babysit** スキルで修正・却下・質問に選別する。","同じ指摘の選別を `references/bugbot-triage.md` に従って実施する。指摘を懐疑的に評価し、雑音は具体的な理由を付けて却下する姿勢は維持する。"],
+  ["a",5,"常設の大規模プログラムを `Orchestrate` へ振り分け","","常設のプロジェクト規模のプログラム (複数日、多数のスタック PR、1人の調整役の下のサブエージェント群) は figure-it-out ではなく **Orchestrate** へ振り分ける。figure-it-out は1回の専用の実行を設計し、orchestrate はプログラムを運用する。"],
+  ["a",5,"`Babysit` プレイブックを追加","","PR またはスタックをマージ可能な状態 (競合、レビューのスレッド、CI) まで進める場合に `playbooks/babysit.md` を使用する。"],
+  ["a",5,"`Shipping` プレイブックを追加","","Babysit の後半として、グリーンのスタックを独立に検証し、連続して検証済みの範囲を Graphite の merge-when-ready でマージする場合に `playbooks/shipping.md` を使用する。"],
+  ["a",5,"`Orchestrate` プレイブックを追加","","1つの調整役チャットに委ねる常設プロジェクト (複数日、多数のスタック PR、数十から数百のサブエージェント、最小限の人の介入) に `playbooks/orchestrate.md` を使用する。1つのエージェントがセッションの予算内で完了できる作業は、表現がプログラム風でも Autonomous run へ振り分ける。"],
+  ["a",5,"`Worktree and simulator cleanup` プレイブックを追加","","マージ済みや放棄された git worktree と古い iOS シミュレーターを削除してローカルのディスクを回収する場合 (「clean up worktrees」「free up space」など) に `playbooks/worktree-cleanup.md` を使用する。"]
+],
+"63d938c2e4": [
+  ["c",3,"コード用の既定モデルを `grok-4.6-fast-xhigh` へ変更","Task 呼び出しの既定モデルは、コード用が `grok-4.5-fast-xhigh`、文章と判断用が `claude-fable-5-thinking-max`。","コード用の既定モデルを `grok-4.6-fast-xhigh` に変更。文章と判断用は `claude-fable-5-thinking-max` のまま。"]
+],
+"23a56e2dac": [
+  ["c",3,"判断用モデルを `claude-fable-5-1-thinking-max` へ変更","文章と判断用の既定モデル、および最難度の変更のうち判断を要する・意図が曖昧なものの委任先は `claude-fable-5-thinking-max`。","文章と判断用の既定モデル、および最難度の変更のうち判断を要する・意図が曖昧なものの委任先を `claude-fable-5-1-thinking-max` に変更。"],
+  ["c",3,"厳密な手順実行の委任先を `claude-fable-5-1-thinking-max` へ変更","最難度の変更のうち、厳密に指定された手順を文字どおり実行する作業は、指示追従が最も強いモデル `gpt-5.6-sol-max` へ委任する。","同じ作業の委任先 (指示追従が最も強いモデル) を `claude-fable-5-1-thinking-max` に変更。"],
+  ["c",5,"`Shipping` のマージ手段を `gh` または Origin へ変更","Shipping は、緑のスタックを独立に検証し、検証済みの連続範囲を Graphite の merge-when-ready でマージする。","検証済みの連続範囲を下から順に、既定では `gh` で、Origin の CLI が利用可能な場合は Origin でマージする。"],
+  ["c",5,"`Autopilot-stack` の成果物を base-branch スタックへ変更","Autopilot-stack は、変更のキューを完全自律で構築・検証し、運用者が自身でマージする線形のレビュー済み Graphite スタックとして納品する。","納品形式を線形のレビュー済み base-branch スタックに変更。運用者が自身でマージする点は同じ。"]
+],
+"e8d856f027": [
+  ["d",6,"Principles 精読を todolist の先頭項目とする指示を削除","複数手順の作業は、先頭項目を「Principles 節を全文読む」とする todolist で開始する。",""],
+  ["c",4,"原則の引用条件を「本セッションで読んだ個別スキルのみ」へ変更","返答では判断に影響した原則とその判断を挙げる。判断を伴わない引用は個別スキルを読み飛ばした証拠とみなし、個別スキルの規則が導いた実際の選択に結び付ける。","返答では判断に影響した原則とその判断を挙げる。引用できるのは、本セッションで個別スキルの SKILL.md を読んだ原則に限定する。"],
+  ["a",1,"`principle-attack-the-premise` を追加","","前提を共有する修正が 2 件以上同じ関門で失敗した場合に適用。次の修正の前に不均衡を抱える主体を集計し、前提を疑う。前提に依存する修正を追加しない。"],
+  ["a",1,"`principle-test-behavior-not-implementation` を追加","","テストの作成・変更・維持時に適用。利用者と同じ方法でコードを呼び出し、結果をリテラルの期待値と照合する。インポートした関数がすべて `undefined` を返しても通るテストは、アサーションを書き直すか削除する。"],
+  ["c",3,"最難度の変更の委任先区分を判断用モデルへ統合","最難度の変更は、判断を要する・意図が曖昧な場合は最も強い判断用モデル、厳密な手順の実行は最も強い指示追従モデルへ委任する (どちらも `claude-fable-5-1-thinking-max`)。","判断を要する曖昧な作業か厳密な手順の実行かを問わず、最も強い判断用モデル `claude-fable-5-1-thinking-max` へ委任する。指示追従モデルの区分を削除。"],
+  ["c",5,"todolist の開始時期の制約と無言スキップ禁止の明記を削除","最初の todolist 項目は該当プレイブックの手順の逐語複製とし、タスク固有の項目より前、かつタスクについて推論する前に記載する。手順を省略する場合は `skip: <理由>` を残し、無言の省略は禁止と明記。","該当プレイブックの手順を逐語で先頭に置いた todolist を、タスク固有の項目より前に作成する。省略する手順は `skip: <理由>` を残す。「推論する前」の条件と無言省略の禁止文を削除。"],
+  ["c",6,"文言の整理","AskQuestion 指示に「質問は遅い経路で、使い捨ての検証の方が速い」という理由文がある。返答節に「事後の清書は失敗すると計測済み」、長いダッシュ禁止に「2 つの事例」の前置き、コメント節に「一律禁止では防げない」「Delete it」の説明がある。","理由文と前置きを削除・短縮。長いダッシュ禁止、ファイル一覧の書き方、太字見出しの書き方、コメントは非自明な理由のみ・検証スクリプトに段階説明コメントを書かない、という指示の内容は維持。"]
+],
+"d7cde2b84e": [
+  ["c",6,"文言の整理 (セミコロンを句点へ置換)","起動条件、Build the Lever、サブエージェント、プレイブックの各箇所で、文をセミコロンで連結。","セミコロンを句点に置換して文を分割。指示の内容に変化なし。"]
+],
+"f8abeddd18": [
+  ["a",4,"主張ごとに根拠またはラベルを同じ文で明示する指示を追加","","各主張は同じ文の中に根拠か、計測・推論・推測のラベルを付ける。予測や未確認の原因は推測とする。自分で実行できる確認を人間に依頼しない。"]
+],
+"f5bdd6826f": [
+  ["c",6,"文言の整理 (`Autopilot-stack` の代名詞を削除)","`Autopilot-stack` の説明で、スタックをマージする運用者を「herself」と記載。","「herself」を削除。運用者がマージする点は同じ。"]
+],
+"70b2dc8b4b": [
+  ["a",2,"完全自律の委任下での判断と既定値の適用規則を追加","","完全自律の委任下では、委任範囲の判断は自身で決定・実行し、返答語や提案を付けずに報告する。運用者だけが決定できる判断には既定値を適用し、詳細な説明と取り消すための 1 語を添えて報告する。運用者が指定した関門と Autonomy の Always-pause 一覧は引き続き運用者の判断を要する。"],
+  ["c",3,"コード用の既定モデルを `grok-4.7-xhigh-fast` へ変更","コード用の既定モデルは `grok-4.6-fast-xhigh`。","コード用の既定モデルを `grok-4.7-xhigh-fast` に変更。"],
+  ["c",3,"判断用モデルを `claude-opus-5-5-max` へ変更","文章と判断用の既定モデル、および最難度の変更の委任先は `claude-fable-5-1-thinking-max`。","文章と判断用の既定モデル、および最難度の変更の委任先を `claude-opus-5-5-max` に変更。"],
+  ["c",5,"`Autopilot-full` の検証対象を各 PR へ変更","root は、マージ可能になった各ヘッドを swarm で検証してから、担当者がマージする。","root は各 PR を swarm で検証してから、担当者がマージする。"]
+],
+"12d587dfb2": [
+  ["a",3,"プレイブック別のモデル設定行の参照規則を追加","","コード系プレイブックの設定モデルは `/setup-pstack` の該当行 (`feature, refactoring`、`bug-fix`、`perf-issue`、`hillclimb`) から取得し、最難度の変更は `hardest tasks` 行を参照する。文章と判断は `judgment and prose` 行を参照する。"]
+],
+"23e4138daa": [
+  ["c",2,"完全自律下の既定値の報告方法を変更","完全自律の許可下で運用者だけが決定できる判断には既定値を適用し、全説明と、それを取り消す1語を添えて報告する。","完全自律の許可下で運用者だけが決定できる判断には既定値を適用し、全説明と、代わりに指示できる内容を平易な言葉で添えて報告する。運用者は自分の言葉で回答するため、返信用の短縮トークンは提示しない。"],
+  ["a",0,"計測時に `benchmark-checklist` を使用","","ベンチマークの実行、自身による性能計測、または計測した高速化・劣化の報告時は、その数値を報告・利用する前に `benchmark-checklist` スキルを使用する。"],
+  ["a",1,"`principle-explain-the-number` を追加","","Verification に Explain the Number を追加。計測した数値（高速化、劣化、スループット、レイテンシ、eval 結果）を信頼・報告・利用する前に、数値を制約する要因を特定し、想定と異なる作業を計測した可能性を排除する。"],
+  ["a",3,"新規作業は新しいサブエージェントへ委任","割り込みで連鎖した再開は指示を欠落させるため、「完了」の要約を信頼せず、統合した範囲で新しいサブエージェントを起動する。","修正ラウンド、追加作業、再試行、キューの次項目を含む新規作業は、元の指示、以後の全指示、前エージェントの報告とブランチを統合した範囲で新しいサブエージェントへ渡す。既存サブエージェントの再利用は、ローカルの checkout、未コミットの変更、実行中のプロセス（dev server、シミュレータ、babysit の監視）など移動の困難な状態が必須の場合に限定する。停止・保留の指示は再利用に該当せず、PR owner などの役割は、担当エージェントの返答後に新しいエージェントが次のラウンドを担当する。"]
+],
+"df581122cd": [
+  ["c",3,"判断用の既定モデルを変更","文章と判断の既定モデル、および最難の変更の委任先を `claude-opus-5-5-max` とする。","文章と判断の既定モデル、および最難の変更の委任先を `claude-opus-5-5-xhigh` とする。"]
+],
+"00b14f1df3": [
+  ["c",1,"原則のスキル名を命名規則へ置換","各原則の項目に対応する個別スキル名（例: `principle-laziness-protocol`）を個別に併記する。","各項目は題のみを記載し、個別スキルは題を kebab case 化した `principle-<title>`（ハイフンは保持し、その他の記号は除外）とする規則を追加。規則と異なる名前の項目だけ名前を併記する（Sequence Work into Verifiable Units の `principle-sequence-verifiable-units`）。"],
+  ["c",5,"プレイブックのファイルパスを命名規則へ置換","各プレイブックの項目に `playbooks/<file>.md` のパスを個別に併記する。","全手順は題を kebab case 化した `playbooks/<title>.md`（ハイフンは保持し、その他の記号は除外）で開く規則を追加。規則と異なる項目だけファイルを併記する（`playbooks/authoring-a-skill.md`、`playbooks/multi-phase-plan.md`、`playbooks/worktree-cleanup.md`）。"],
+  ["c",6,"文言の整理","`AskQuestion` の起動条件、文章面（prose surface）の起動条件、Babysit の起動条件、返答節のプレイブック別の行への参照を、それぞれ冗長な文で記載する。","`AskQuestion` の文を圧縮し、文章面の起動条件に「ユーザーへの返答を含む」を条件側へ記載し、Babysit の依頼例を条件側の括弧内へ移動する。返答節の参照は「下記のプレイブック別の行」から「各プレイブック自身の返答の行」へ変更する。指示の内容は不変。"]
+],
+"2bd5dd4f22": [
+  ["a",3,"プレイブックは受信したチャットが実行","","`/poteto-mode` を受信したチャット自身がプレイブックを実行する。プレイブック自体を実行させる目的で `poteto-agent` を起動しない。"]
+],
+"364a77eb35": [
+  ["a",3,"`poteto-agent` へ本ファイルの絶対パスを渡す","","同梱スキルは本ファイルから見て `../<name>/SKILL.md` に配置されるため、すべての `poteto-agent` へのプロンプトに本ファイルの絶対パスを記載する。"]
+],
+"b93e811788": [
+  ["d",0,"frontmatter の `reminder` を削除","frontmatter の `reminder` で、新規タスクでプレイブックが一致するか厳密さが必要な場合は /poteto-mode を適用し、雑談やユーザーが不要とした場合は適用しないと指示する。",""],
+  ["d",6,"frontmatter の `mode: true` を削除","frontmatter に `mode: true` を記載する。",""]
+],
+"ce649c03ac": [
+  ["d",3,"共通ラッパーの説明を削除","`/poteto-mode` と `poteto-agent` は同じラッパーを経由すると記載する。",""],
+  ["a",3,"仕事に応じたモデル調整を追加","","起動ごとに役割の設定行または既定値から推論レベルと速度を選択する。開始レベルは `/setup-pstack` の予算（既定 xhigh）とし、最難の作業は1段階上げ（上限 max）、判断は1段階、定型作業は2段階以上下げる。fast は CI・trunk の失敗や人が結果を待つ緊急時のみ使用し、それ以外は `-fast` なしの識別子とする。検証は例外で `swarm workers` のモデルと速度（既定 `grok-4.7-xhigh-fast`）を維持する。変更するのは推論レベルと fast の有無のみで、役割のモデル系統は維持し、該当識別子がなければ最も近い識別子を使用する。`auto` / `inherit-parent` は親モデルのままとし、Task ツールが調整後の識別子を拒否した場合は別の調整を試さず、役割の設定行または既定値を使用してその旨を報告する。"]
+],
+"e5136d8241": [
+  ["c",1,"`principle-attack-the-premise` の要約を変更","前提を共有する修正が2件以上同じ関門で失敗した場合、次の修正の前に不均衡を保持するアクターを網羅的に調査し、その前提を疑う。","前提を共有する修正が2件以上同じ関門で失敗した場合、その前提を書き出して直接検証してから、前提に依存する次の修正を作成する。"],
+  ["c",1,"`principle-fix-root-causes` の要約を変更","デバッグ時は各症状を根本原因まで追跡し、先に再現し、原因に到達するまで「なぜ」を繰り返す。","デバッグ時は各症状を、システムが最初に誤った箇所まで遡ってそこで修正する。ガードは、扱う状態が正当な場合に限り修正とみなす。"],
+  ["c",1,"`principle-test-behavior-not-implementation` の要約を変更","利用者と同じ方法でコードを呼び出し、結果をリテラルの期待値と比較する。全 import が `undefined` を返しても通過するテストは、assertion を書き直すか削除する。","コードの利用者が観測できる内容を assert し、その振る舞いが壊れると失敗し、内部実装の変更だけでは通過し続けるテストにする。"]
+],
+"a968159326": [
+  ["c",6,"frontmatter の `name` を変更","frontmatter の `name` を `Poteto Mode` とする。","frontmatter の `name` を `poteto-mode` とする。"]
+],
+"ab1f702ce8": [
+  ["a",4,"最初の返答で目的と最小変更を提示","","タスクの最初のメッセージで、ユーザーの目的、解決する問題、変更を出荷するタスクではそれを満たす最小の変更を自分の言葉で示し、確認を待たずに進める。証拠が依頼された変更を否定する場合は、それを提示して停止する。ユーザーの目的をサブエージェントへの指示、各 PR の `## Why` の冒頭、最終返答を含む各最終報告の冒頭に記載する（完全に指定された1行の編集の後は除外）。"],
+  ["c",1,"`principle-explain-the-number` の適用時点を拡大","計測した数値を信頼・報告・利用する前に適用する。","計測の前にも適用し、加えて計測した数値を信頼・報告・利用する前に適用する。"],
+  ["c",3,"実行中エージェントへの指示もバックグラウンド化","すべての `Task` 呼び出しで `run_in_background: true` とする。","実行中エージェントへの方針指示や再開の呼び出しも `run_in_background: true` とする。前面の呼び出しはほかの報告が待機する間もターンを占有するため。"],
+  ["c",3,"識別子拒否時のフォールバックを詳細化","Task ツールが調整後の識別子を拒否した場合は、役割の設定行または既定値を使用してその旨を報告する。","それも拒否された場合は呼び出し元スキルのフォールバックへ進む。モデルが無効とするエラーか、有効な識別子一覧に含まれない場合を拒否とみなし、拒否済みの識別子は再使用せずフォールバックでも除外する。呼び出し元にフォールバックがない場合はエラーの一覧から役割の系統で最も近い有効な識別子を使用し、一覧がない場合やフォールバックが次の手順を示さずに尽きた場合は `model` を省略して親モデルで実行し、その旨を報告する。"],
+  ["c",5,"`Autopilot-stack` の定義を変更","全自律で構築・検証した変更のキューを、運用者がマージする1本の線形のレビュー済みベースブランチのスタックとして納品する。","マージしない Autopilot-full と定義し、全自律で構築・検証した PR のキューを運用者へ渡してマージさせる。PR は依存する PR の上にだけ積む。起動語に「autopilot, don't merge」を追加。"]
+],
+"bf0c7cd80a": [
+  ["d",0,"`how` の起動条件を削除","単純ではない変更、アーキテクチャの判断、「本当に大丈夫か」という問い → `how`","起動条件なし。`/poteto-mode` と配下のスキルはコードを直接追跡する。`/how` は利用者が自分で呼び出すスキルとして残存する。"],
+  ["c",3,"独自の `subagent_type` を持つスキルから `how`・`why` を除外","`how`・`why`・`interrogate`・`reflect`・`swarm`","`interrogate`・`reflect`・`swarm`。`/setup-pstack` がモデル選択を上書きするスキルの一覧も `arena`・`swarm`・`architect`・`interrogate`・`reflect` に変更。"],
+  ["c",3,"既定モデルを Fable 5.2・Opus 5.5・Gemini 4 Carbon へ変更","`hardest tasks` は `claude-opus-5-5-xhigh`。`feature, refactoring · bug-fix · perf-issue · hillclimb` は `grok-4.7-xhigh-fast`。`swarm workers · reflect tooling · 検証 · 単純な機械的変更` は `grok-4.7-xhigh-fast`。`arena runners · arena cross-judge pool · architect runners · interrogate reviewers` は `claude-opus-5-5-xhigh`、`grok-4.7-xhigh-fast`。","`hardest tasks` は `claude-fable-5-2-max`。`feature, refactoring · bug-fix · perf-issue · hillclimb` は `claude-opus-5-5-xhigh`。`swarm workers · reflect tooling · 検証 · 単純な機械的変更` は `claude-opus-5-5-high-fast`。`arena runners · arena cross-judge pool · architect runners · interrogate reviewers` は `claude-fable-5-2-high`、`claude-opus-5-5-high-fast`、`gemini-4-carbon-high`。Grok 4.7 は既定から除外。役割の名前と4段階の予算は維持され、既存の `pstack-models.mdc` はそのまま動作する。"],
+  ["a",3,"旧版の setup が出力したルールを検出","","ルールに `# defaults: 2` の行がなければ、旧版の setup が出力したものと判定する。既存の行は維持し、`/setup-pstack` の再実行をセッションに1回案内する。"],
+  ["a",3,"モデル系列ごとの制約を追加","開始レベルの既定は xhigh。","開始レベルの既定は xhigh または high、`hardest tasks` は max。Fable（`claude-fable-*`）は、ほかの Claude モデルと別の系列。Gemini には xhigh・max・fast の識別子がなく、high 以上が必要な仕事は high で実行する。Fable 5.2 には fast の識別子がなく、緊急時も標準速度でレベルを維持する。"],
+  ["c",7,"プレイブック6件: `how` の実行をコードの追跡へ変更","Investigation 1・3、Feature 1、Bug fix 2、Hillclimb 1、Perf issue 2、Refactoring 1 が `how` を実行。","各ステップは対象のコード・サブシステムを直接追跡する。Investigation の出力の構成（Overview / Key Concepts / How It Works / Where Things Live / Gotchas）は維持。Multi-phase plan の読書リストから `how` を削除。"],
+  ["c",7,"プレイブックの「(default …)」の記載を新しい既定モデルへ変更","feature・bug-fix・perf-issue・hillclimb・refactoring は `grok-4.7-xhigh-fast`。Multi-phase plan の `swarm workers` も同じ。","コード用の5件は `claude-opus-5-5-xhigh`。Multi-phase plan の `swarm workers` は `claude-opus-5-5-high-fast`。"],
+  ["c",7,"`/how` を1ファイルへ縮小","モデルの振り分け、複雑度の判定、explorer、出力形式、プロンプトのテンプレート2件を保持。","読み取り専用のサブエージェント1件を3文の指示で起動し、出力を提示する。固定の見出しと役割別のモデルは廃止。`/teach` は引き続き `/how` を実行する。"],
+  ["c",7,"`/why` を1ファイルへ縮小（本文48語、情報源とツールの名前なし）","investigator、synthesizer、モデルの振り分け、出力形式、`references/` 配下の12ファイルを保持。接続済みの情報源を順に検索。","コードではなく記録から回答する。対象を導入したコミットとPRの議論、その後の各変更を起点とし、痕跡が薄い場合だけほかの情報源を参照する。著者の記載を引用し、自分の推論を明示し、記録が答えない点を述べる。"],
+  ["c",7,"`recall`・`blast-radius`・`teach`: `why` の削除箇所への依存を解消","`recall` は `why` の investigator と情報源別の手順を借用。","`recall` は情報源ごとに自前の investigator を起動する。`blast-radius` と `teach` は `why` の削除済みの箇所（ステップ2、規則、全件探索と絞り込みの助言）を参照しない。"],
+  ["c",7,"`/setup-pstack`: `how`・`why` の役割を廃止、`# defaults: 2` を出力","`how explorer`・`how explainer`・`why investigators`・`why synthesizer` の役割を保持。役割の既定はすべて xhigh。","4つの役割を廃止。残存する行は次回の実行で削除される。`# defaults: 2` の行を出力する。予算は役割ごとの既定の推論レベルを基準とし、`large` は維持、`unlimited` は1段階上、`medium` は1段階下、`small` は2段階下。"],
+  ["a",7,"`/setup-pstack`: 旧既定値の移行規則","","`# defaults: 2` のないルールに対し、次回の実行で適用する。旧既定が Grok 4.7 だった役割の `grok-*` は新しい既定へ。`hardest tasks` の `claude-opus-*` は新しい既定へ。`claude-opus-*` と `grok-*` 各1件だけのパネルは新しい3席へ。それ以外のパネルの `grok-*` は `claude-opus-5-5-high-fast` へ。ほかの値、`inherit-parent`、`auto` は維持。"],
+  ["c",7,"`arena` の cross-judge: 親と同じベンダーを除外","","judge は親チャットのベンダー以外から選択する。Fable とほかの Claude モデルは同一のベンダーとして扱う。既定のプールでは、Claude の親は `gemini-4-carbon-high` を使用し、拒否された場合は judge を省略する。ほかのベンダーの親は `claude-fable-5-2-high` を優先する。"],
+  ["c",7,"`/sharpen`: 実験で決着できる選択は試作を要求","書き換え後のプロンプトは、すべての選択を未決のまま残す。","書き換え後のプロンプトは、実験で決着できる選択を試作し、観察結果から選択肢を推薦するようエージェントへ求める。実験で決着できない製品判断と好みは利用者に残す。"],
+  ["c",7,"`/reflect`: synthesizer の例を関数名の変更へ差し替え","陳腐化する詳細の例がモデル名の変更。","例は関数名の変更（`parseConfig` → `loadConfig`）。"],
+  ["c",7,"`/statechart`: SANY が仕様を読めない場合に行と列を報告","エラーは SANY の XML 実行の末尾（Java のスタックトレース）。","最初の実行が失敗すると SANY を plain モードで再実行し、`*** Errors`・`*** Abort messages`・`*** Parse Error` の行から始まるエラー部分を報告する。上限は40行。再実行できない場合は従来の末尾へ戻る。"],
+  ["c",7,"`/statechart`: 親状態への矢印を境界で終端","外部から内部の状態への矢印が、親状態のタイトルを横切る場合がある。","入口が1つの親状態では、外部からの矢印は親の境界で終端し、親の開始マーカーから内部の状態へ接続する。2つ以上の状態から入る親は対象外。コーパスでは Login の図だけが変化する。"],
+  ["c",7,"`no-comments`・`comment-sicko`・Benny: `how` の実行を追跡へ変更","","`no-comments` と `comment-sicko` はシンボルを追跡するか `/why` を実行する。Benny の triage と reproduce は経路を自分で追跡し、対象リポジトリが解決すべき pstack スキルの一覧から `how` を除外する。`why` は引き続き使用する。"],
+  ["c",7,"Claude Code 向けの対応表を更新","","`claude-opus-5-5-high-fast` は `opus high`、`claude-fable-5-2-max` は `fable max`、`gemini-4-carbon-high` は `inherit-parent`。"],
+  ["c",7,"README とガイド（01・02・03・04・10）を新しい流れへ更新","","既定のモデル構成、`/why` と `/how` の説明、`/sharpen` の最終行の説明を更新。プラグインバージョンは 0.15.42。"]
+],
+"2f87c854fe": [
+  ["c",0,"最初のメッセージの規定を短縮","タスクの最初のメッセージで、ユーザーの目的、解決する問題、変更を出荷するタスクではそれを満たす最小の変更を自分の言葉で伝え、確認を待たずに進める。証拠が依頼された変更を否定する場合は、それを提示して停止する。目的を各サブエージェントへの指示で再掲し、各 PR の `## Why` と、最終返答を含む各最終報告を目的から開始する（完全に指定された1行の編集の後は除外）。","最初のメッセージで、ユーザーの目的と、それを満たす最小の変更を再掲して進める。各サブエージェントへの指示、PR の `## Why`、最終報告を目的から開始する。証拠が変更を否定する場合の停止と、1行の編集の除外は削除。"],
+  ["a",0,"起動するエージェントのキックオフの1行目で `worker.md` を指定","","Task のサブエージェントか Project worker を起動する場合は、キックオフの1行目を `Read <path>/worker.md before anything else.`（`<path>` はこのスキルのフォルダの絶対パス）とする。運用者の規則はスラッシュコマンドからだけ読み込まれるスキルにあり、ほかに別のエージェントへ届く経路がないため。キックオフの残りは目的とタスクに限定し、`poteto-agent` にはこのファイルの絶対パスを追加する。"],
+  ["c",0,"質問の前の分類を、実行で決着できる分岐の試作へ短縮","「どの方法か」「どうすべきか」「何をすべきか」の分岐で `AskQuestion` する前に分類する。実行して観察できる事実は Prototype プレイブックで試作して結果で決定する。出典付きの回答が成果物の読み取り専用の Investigation では証拠から回答し、質問は実験で決着できない製品判断・好みに限定する。完全な自律実行の許可の下では、許可の範囲の判断は自分で決定して報告し、運用者しか決定できない判断は既定値を適用して報告する。運用者が明示した承認条件と Always pause の一覧は運用者の確認を要する。","実行して決着できる分岐は、質問せずに `playbooks/prototype.md` に従って試作する。分類の手順、Investigation の例外、質問を製品判断・好みに限定する規定、完全な自律実行の許可の下での規定は削除。"],
+  ["c",0,"コードの起動条件を1行へ集約","コード全般では最初にデータの形を明示し、構成を **principle-model-the-domain** に従って選択する。関数の境界をまたぐコードは、実装前に **architect** で設計を並行して検討する。並列展開（網羅性の行列、競争、多段階の評価、探索の分割）は **swarm**、土台の選択と接ぎ木を伴う設計・コードの比較は **arena**、議論のある設計はリリース前に **interrogate** を使用する。","コードでは最初にデータの形を明示する。関数の境界をまたぐ場合は **architect**、並列展開（fan-out）は **swarm**、比較（bakeoff）は **arena**、議論のある設計は **interrogate**。principle-model-the-domain の参照、architect での並行した設計の検討、各スキルの用途の説明、interrogate の「リリース前」は削除。"],
+  ["d",0,"スループットの確認項目の起動条件を削除","単純ではない多段階の作業では、スループットの確認項目を記述する（Feature のステップ3）。",""],
+  ["c",0,"文章の起動条件を短縮","ユーザーへの返答を含む全ての文章で **unslop** を使用し、返答は「Writing the reply」に従う。エージェント向けの文章は **create-skill** にも従う。ドキュメント・RFC・README・PR 説明・コミットメッセージは **technical-writing** を使用する。","返答を含む文章は **unslop**。ドキュメント・PR 説明・コミットメッセージは **technical-writing**。create-skill の参照と、RFC・README の列挙は削除。"],
+  ["c",0,"UI・IDE・CLI の起動条件を短縮","UI・IDE・CLI の出荷では、該当する control スキルを使用する。`control-cli` は CLI・TUI、`control-ui` はブラウザ・Electron・Web UI が対象。バグ修正は自分で同じ操作面から先に再現し、利用者への引き渡しは Bug fix のステップ1の限定的な例外に限定する。","UI・IDE・CLI の出荷では、`cursor-team-kit` の `control-ui` か `control-cli` を使用する。対象ごとの対応と、バグ修正の再現と引き渡しの規定は削除。"],
+  ["c",0,"測定した数値の起動条件を短縮","ベンチマークの実行、自分での性能測定、測定した高速化・劣化の報告では、数値を報告・利用する前に **benchmark-checklist** を使用する。","測定した数値は **benchmark-checklist**。「報告・利用する前」の時点の指定は削除。"],
+  ["c",0,"PR の状況と green のスタックの起動条件を短縮","PR の状況の依頼（「babysit this」「get it green」「address the bugbot comments」「check on PR X」「anything outstanding on X」）は、Cursor 組み込みの babysit スキルではなく **Babysit** プレイブックを使用する。PR を開いただけでは起動せず、ポーリングの前にモードを宣言する。フェーズ担当エージェントの内部で `drive` を使用するとターンを完了できない。green のスタックのマージ・リリースの依頼は **Shipping** で、各 PR への独立した判定の前には何も arm せず、根元から連続して検証済みの範囲だけをマージする。","PR の状況は、Cursor 組み込みの babysit スキルではなく **Babysit** プレイブック。green のスタックのマージは **Shipping** プレイブック。依頼の例、起動しない場合、モードの宣言、`drive`、Shipping の判定とマージの範囲の規定は削除。"],
+  ["c",0,"ボットのレビューコメントの起動条件を短縮","Bugbot やエージェントのセキュリティレビューのコメントは懐疑的な姿勢で、各コメントを内容で評価し、ノイズは具体的な理由を付けて却下する。`references/bugbot-triage.md` に従って修正・却下・質問に分類する。","ボットのレビューコメントは、各コメントを内容で判断する。`references/bugbot-triage.md` の参照と、修正・却下・質問の分類は削除。"],
+  ["d",0,"壊れたスキルの起動条件を削除","作業中に壊れたスキルを発見した場合は、別の PR で修正する。作業を止めず、黙って回避しない。",""],
+  ["c",0,"長時間・不在の作業の起動条件を短縮","長時間・自律・複数フェーズの作業と、利用者が不在の間に進行させ後で確認する作業（「going to bed」「trust it when i'm back」「/loop until X」）は、**show-me-your-work** で判断の記録を残す。監査可能な記録が必要な重要度ではコミットし、それ以外はローカルに保存する。","長時間・不在の作業は **show-me-your-work**。依頼の例と、記録のコミット・ローカル保存の規定は削除。"],
+  ["c",0,"文言の整理","起動条件の一覧の前置きは「Remaining triggers:」。コミット前は「`cursor-team-kit` プラグインの `deslop` スキル（`/deslop`）」、レビュー前は別の行で「**no-comments** スキル（`/no-comments`）」。","前置きは「The remaining triggers live only here:」。コミット前とレビュー前を1行に集約し、「`cursor-team-kit` の `/deslop`」「**no-comments**」と記載する。"],
+  ["c",3,"`poteto-agent` の対象を直接起動するサブエージェントに限定し、`reflect` を除外","プレイブックのステップ内で起動するサブエージェント（コードを書く委任先、臨時の補助）は `poteto-agent` とする。`/poteto-mode` を受けたチャットがプレイブックを実行し、`poteto-agent` にプレイブック自体を実行させない。`interrogate`・`reflect`・`swarm` は各スキルが指定する `subagent_type` に従う。","プレイブックのステップ内で直接起動するサブエージェントは `poteto-agent` とする。`/poteto-mode` を受けたチャット自身がプレイブックを実行する。`interrogate`・`swarm` は各スキルが指定する `subagent_type` に従う。"],
+  ["c",3,"既定モデルを Opus 5.5 の `-fast` へ変更し、`hardest tasks` を廃止","コード・文章・判断の既定は `claude-opus-5-5-xhigh`。最難関の変更（横断的な設計、難しい並行処理、繊細なアルゴリズム）は `hardest tasks` のモデル（既定 `claude-fable-5-2-max`）。単純な機械的変更は `swarm workers` のモデル（既定 `claude-opus-5-5-high-fast`）。","コード・文章・判断の既定は `claude-opus-5-5-xhigh-fast`、単純な機械的変更は `claude-opus-5-5-high-fast`、パネルは `claude-fable-5-2-high`・`claude-opus-5-5-high-fast`・`gemini-4-carbon-high` の各1席。`hardest tasks` の役割は削除。"],
+  ["c",3,"`Task` の既定と `/setup-pstack` のルールの記載を変更","`run_in_background: true` は実行中のエージェントへの指示変更・再開にも適用する。`/setup-pstack` のルールの役割ごとの行は、既定値と `arena`・`swarm`・`architect`・`interrogate`・`reflect` のモデル選択を上書きする。`inherit-parent`・`auto` の役割は Task の `model` を省略して親モデルで実行する。`# defaults: 2` の行がないルールは旧版。","役割ごとのモデル明示は Project worker にも適用する。`/setup-pstack` は `~/.cursor/rules/pstack-models.mdc` を出力し、その役割ごとの行が既定値と `arena`・`swarm`・`interrogate` の役割のモデルを上書きする。`inherit-parent`・`auto` の役割は `model` を省略して `generalPurpose` を起動する（`poteto-agent` の既定は Opus 5.5 のため）。単純な機械的変更は `swarm workers` の行を参照する。`# defaults: 3` の行がないルールは旧版。実行中のエージェントへの指示変更・再開の記載は削除。"],
+  ["a",3,"Fable 5.2 をパネル以外では例外とする","","Fable 5.2 は、ユーザーがこのタスクに指定した場合か、同じ指示での Opus 5.5 xhigh の2回の実行が確認に失敗した場合だけ、パネル以外で実行する。どちらに該当するかを明示する。難しさだけでは該当しない。"],
+  ["c",3,"推論レベルの上限を xhigh とし、Opus 5.5 は常に `-fast`","起動ごとに役割の行または既定値から推論レベルと速度を選択する。開始レベルは `/setup-pstack` の予算（既定は xhigh か high、`hardest tasks` は max）。最難関の仕事は1段階上げ（上限 max）、判断は1段階、定型作業は2段階以上下げる。fast は CI・trunk の破損か人が結果待ちの場合だけ使用する。検証は `swarm workers` のモデルと速度を維持する。系列は維持し、Fable はほかの Claude と別の系列。Gemini は high 以上の仕事を high で実行し、緊急の Fable 5.2 は標準速度でレベルを維持する。","役割の行または既定値から開始し、系列を維持してレベルを設定する。開始レベルは `/setup-pstack` の予算。パネルの席は記載のレベルを維持し、ほかの役割は最難関の仕事で1段階上げ（上限 xhigh）、判断で1段階、定型作業で2段階以上下げる。どの役割も xhigh を上限とし、Opus 5.5 は常に `-fast` の識別子を使用する。検証は常に `swarm workers` のモデル。Gemini の席は `gemini-4-carbon-high` を上限とする。"],
+  ["c",3,"識別子が拒否された場合の代替の順序を1文に変更","Task ツールが調整後の識別子を拒否した場合は、役割の行または既定値を使用して報告する。それも拒否された場合は呼び出し元スキルの代替へ移行する。拒否済みの識別子は再び指定しない。呼び出し元スキルに代替がない場合は、エラーが示す有効な識別子から同系列で最も近いものを使用し、一覧にない場合と、代替が次の手順を示さずに尽きた場合は `model` を省略する。","Task ツールが識別子を拒否した場合は、その識別子を再び指定しない。役割の行または既定値、呼び出し元スキルの代替、同系列で最も近い有効な識別子、`model` の省略の順に代替し、その旨を報告する。"],
+  ["c",3,"セカンドオピニオンと新しいサブエージェントの規定を短縮","セカンドオピニオンは同じプロンプトを別のモデルで実行し、一致は強い信号とする。既存のエージェントの再開は、移動が高コストな状態（ローカルのチェックアウト、未コミットの変更、開発サーバー・シミュレーター・babysit の監視などの実行中のプロセス）が必要な場合だけ。停止・保留の指示は再利用ではなく、PR の担当などの役割は、エージェントの報告の後に新しいエージェントが次の回を担当する。","セカンドオピニオンは同じプロンプトを別ベンダーのモデルで実行する。既存のエージェントの再開は、移動が高コストな状態（チェックアウト、未コミットの変更、実行中のプロセス）が必要な場合だけ。停止・保留の指示と、役割の引き継ぎの規定は削除。"],
+  ["c",4,"Writing the reply を1段落に縮小","下書きの時点で清書する。短い平叙文、長いダッシュの禁止、文中の接続のコロンの禁止、簡潔さを理由に内容を省略しない、利用者と保守担当者への影響から説明する、リンク・引用を捏造しない、各主張と同じ文に根拠か確度を付記する。全てのプレイブックはこの形式の返答で終了し、PR のリンクを `https://github.com/<owner>/<repo>/pull/<number>` の形式で記載する。","短い平叙文で記載し、長いダッシュと接続のコロンを使用しない。ユーザーにとって変化する点から記載する。各主張に根拠か確度（実測・推論・推測）を付記する。実行できる確認を人間に依頼しない。プレイブックの最後の返答、リンク・引用、保守担当者への影響の規定は削除。"],
+  ["d",4,"Comments 節を削除","コメントは返答と同じ規則で記載し、コードで示せない自明でない理由だけを残す。検証・テストのスクリプトに段階を説明するコメントを記載せず、アサーションとログの文字列で手順を示す。委任先の差分を含む全てのファイルに適用する。",""],
+  ["c",5,"プレイブックの説明を削除し、名前の一覧に変更","各プレイブックに対象の説明と起動語がある（例: Investigation は読み取り専用の問い、Bug fix は報告された不具合、Opening a PR はほかの全てのプレイブックの最後に起動）。","22件のプレイブックを名前だけで列挙し、タスクに該当するプレイブックの手順を `playbooks/<title>.md` で開く。各プレイブックの説明と起動語は削除。"],
+  ["d",5,"`Orchestrate` プレイブックを削除","常設のプロジェクト規模のプログラム（複数日、多数のスタック PR、1人の調整役の下のサブエージェント群）は **Orchestrate** の対象とする。1つのエージェントがセッションの予算内で完了できる作業は、表現がプログラム風でも Autonomous run の対象とする。",""],
+  ["c",5,"手順の複写と `figure-it-out` への振り分けを短縮","一致したプレイブックの手順を原文のまま、作業固有の ToDo より前に todolist の先頭へ複写する。大規模・横断的な作業（多数の呼び出し箇所の移行、複数の要素にまたがる変更）と利用者が不在の間に進行させ後で確認する作業は、Feature などが該当する場合も **figure-it-out** の対象とし、該当するプレイブックがない作業も **figure-it-out** の対象とする。","プレイブックの手順を最初に todolist ツールへ複写する。大規模・横断的・不在中の作業と、該当するプレイブックがない作業は **figure-it-out** の対象とする。「原文のまま」と、ほかのプレイブックが該当する場合の優先の記載は削除。"],
+  ["d",5,"実施しない手順を `skip: <reason>` で残す規則を削除","実施しない手順は、1行の `skip: <reason>` を付けて ToDo に残す。",""],
+  ["a",7,"`poteto-mode/worker.md` を追加","","起動されたエージェントに、運用者がキックオフを記載したエージェントではなく実行の対象の人であることを明示する。キックオフの基準が全ての基準であること、失敗した実行か利用者に影響するバグの場合だけ停止すること、人に質問しないこと、PR をレビュー可能な状態で開くこと、PR の題と本文の形を規定し、同じ指定を次のエージェントへ伝達する。"],
+  ["c",7,"原則のスキル14件の本文を短縮","14件の principle スキルが長い本文を持ち、うち4件がインターフェースの圧縮について記載する。","各規則とその確認方法を残した短い本文に置換する。frontmatter は変更なし。ほかのスキルへの参照2件は `benchmark-checklist` と `typescript-best-practices` を明記する。インターフェースの圧縮の記載は削除。"],
+  ["c",7,"`unslop` と `technical-writing` の本文を短縮","","`unslop` は規則番号を維持し、規則14（文中のコロンの禁止）は同じ意味のまま。廃止した規則は欠番とする。`technical-writing` は4つの層を短い形で維持し、slop のパターンは `unslop` へ、UI の文字列は製品のコピーのガイドラインへ振り分ける。"],
+  ["c",7,"Opening a PR プレイブックを3段落に縮小","forge、準備状態、規模の詳細な節を持つ。","worktree、小さなコミット、`/deslop`、題の形式、本文の6つの見出し、ベースブランチによる積み上げ、レビュー可能な状態での作成を維持する。PR のツールがない場合は `gh pr create`（`--draft` なし）か `origin pr create --status open` で作成する。"],
+  ["c",7,"Babysit プレイブックを6規則に縮小","","3つのモード、競合・スレッド・CI の順序、rebase しない規則、Bugbot の懐疑的な選別、マージしない規則を維持する。forge は既定が `gh`、Origin の CLI がリポジトリを解決する場合は `origin pr` で、`gt` は使用しない。返信は `gh api --input` か `origin pr thread reply --body-file` で送信し、コメントの文面からシェルのコマンドを構成しない。"],
+  ["c",7,"Multi-phase plan プレイブックを5手順に縮小し、`check-plan.mjs` を削除","","小さな変更を対象外とする規則、試作で先に決定する問い、着地の順序・依存グラフ・PR ごとのチェックボックスの節を持つ計画ファイル、単体・実環境・性能の検証の項目、実行前の停止を維持する。どこからも実行されない `check-plan.mjs` とそのテストを削除する。"],
+  ["c",7,"`reflect` をサブエージェントなしの1ファイルに変更","3つのレビュアーと synthesizer、4件の参照ファイルを使用する。","会話記録を自分で参照し、今後も成立し将来のエージェントの作業を変更する所見だけを残し、セッションで使用したスキルへ振り分け、編集の前に承認を待機する。`plugins/cache/` 配下のスキルを編集せず、PR の作成と push をしない規則は維持。`/setup-pstack` の `reflect tooling` と reflect の各役割を廃止。"],
+  ["c",7,"`architect` を短い指示と `arena` への振り分けに縮小","5つのフェーズ、runner のプロンプト、危険信号の一覧、根拠のテンプレートを使用する。","変更が触れる全てのシステムを追跡し、2つの形を作成し、状態ごとの所有者が1つ・各作業の方法が1つ・呼び出し側の知識が最少の形を選択し、回避策が反復する場合は再設計する。大規模または議論のある設計は `arena` を実行する。`/setup-pstack` の `architect runners` を廃止。"],
+  ["c",7,"`arena` の runner と cross-judge の手順を短縮","","Phase A の手順3は、runner の行、既定のパネル、別名の規則、拒否された識別子の代替（同系列で最も近い識別子か、席を除外して runner を2つ以上残す）、系列の規則を維持する。Phase C は judge のプール、別ベンダーの規則（Fable は Claude と同じベンダーとする）、親が不明な場合、省略を維持する。長い代替の連鎖は削除。"],
+  ["d",7,"`playbooks/orchestrate.md` を削除","`playbooks/orchestrate.md` が、常設のプロジェクトを1つの調整役のチャットで運用する手順を規定する。",""],
+  ["c",7,"`/setup-pstack`: `# defaults: 3` と3段階の予算","`# defaults: 2` を出力する。","`# defaults: 3` を出力し、xhigh を上限とする3段階の予算（large・medium・small）を提示する。新しい印のないルールは、次回の実行で廃止した役割を削除し、旧来の3席の既定のままの cross-judge のプールを新しいプールへ変更し、`unlimited` の予算を `large` へ変更する。`# defaults: 2` より古いルールの Grok の移行は維持する。"],
+  ["c",7,"既定モデルに合わせて `poteto-agent` と各スキルを更新","","`poteto-agent` は `claude-opus-5-5-xhigh-fast` に固定する。`arena` の cross-judge のプールから Fable を除外する。`show-me-your-work` のレビュアーは別ベンダーのモデルを使用する。結果の送信・待機・集約だけの Eval のエージェントは `claude-opus-5-5-medium-fast` で実行する。"],
+  ["c",7,"README・ガイド・Claude Code 向けの対応表を更新","","README とガイド（01・02・04・05・06・07・09）を、新しい既定モデル、短縮したプレイブック、`worker.md`、Orchestrate の削除に合わせて更新する。Claude Code 向けの対応表は `claude-fable-5-2-high` を `fable high` に対応させ、`poteto-agent` の起動ごとに model と effort を渡すと記載する。プラグインバージョンは 0.15.43。"]
+]
+}

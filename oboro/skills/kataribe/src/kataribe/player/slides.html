@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+{{CSS}}
+</style>
+</head>
+<body>
+<main id="kataribe-slides">
+  <div id="kataribe-stage" role="region" aria-roledescription="スライド" aria-label="{{TITLE}}">
+    <header id="kataribe-head">
+      <p id="kataribe-chapter"></p>
+      <h1 id="kataribe-heading"></h1>
+    </header>
+    <div id="kataribe-body">
+      <div id="kataribe-visual">
+{{SCENES}}
+      </div>
+      <div id="kataribe-narration" aria-live="polite"></div>
+    </div>
+    <div id="kataribe-characters" aria-hidden="true"></div>
+    <div id="kataribe-bubbles" aria-live="polite"></div>
+    <div id="kataribe-progress" aria-hidden="true"><span></span></div>
+  </div>
+  <div id="kataribe-controls">
+    <button id="kataribe-prev" type="button" aria-label="前へ">←</button>
+    <select id="kataribe-jump" aria-label="スライドへ移動"></select>
+    <span id="kataribe-counter" aria-live="polite"></span>
+    <button id="kataribe-next" type="button" aria-label="次へ">→</button>
+  </div>
+  <p id="kataribe-hint">クリック・→・スペースで進む ／ ← で戻る ／ PageUp・PageDown でスライドを移動</p>
+{{ABOUT}}
+</main>
+<script type="application/json" id="kataribe-data">{{SLIDES}}</script>
+<script type="application/json" id="kataribe-cast">{{CAST}}</script>
+<script>
+{{CASTJS}}
+</script>
+<script>
+{{FIGURESJS}}
+</script>
+<script>
+{{JS}}
+</script>
+</body>
+</html>

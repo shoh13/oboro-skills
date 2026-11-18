@@ -1,0 +1,1 @@
+sections[6]: id「s5」が重複
