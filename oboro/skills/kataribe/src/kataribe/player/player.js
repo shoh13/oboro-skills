@@ -6,6 +6,10 @@
   const playButton = document.getElementById("kataribe-play");
   const playLabel = playButton.querySelector(".kataribe-label");
   const captionsButton = document.getElementById("kataribe-captions-toggle");
+  const prevButton = document.getElementById("kataribe-prev");
+  const nextButton = document.getElementById("kataribe-next");
+  const rateSelect = document.getElementById("kataribe-rate");
+  const keyList = document.getElementById("kataribe-keys");
   const scenes = Array.from(document.querySelectorAll("#kataribe-stage section[data-scene]"));
   const chapterTitles = Object.fromEntries(timeline.chapters.map((c) => [c.id, c.title]));
   const chapterBar = document.getElementById("kataribe-chapter-bar");
@@ -122,8 +126,25 @@
     return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
   }
 
+  function totalSeconds() {
+    return Number.isFinite(audio.duration) ? audio.duration : timeline.lines[timeline.lines.length - 1].end;
+  }
+
+  function moveToChapter(offset) {
+    const now = audio.currentTime;
+    const chapter = timeline.lines[lineIndexAt(now)].chapter;
+    const index = timeline.chapters.findIndex((c) => c.id === chapter);
+    const start = KataribeKeys.chapterStart(timeline.chapters, index, now, offset);
+    if (start !== null) audio.currentTime = start;
+  }
+
+  function stepRate(offset) {
+    rateSelect.selectedIndex = Math.min(Math.max(rateSelect.selectedIndex + offset, 0), rateSelect.options.length - 1);
+    rateSelect.dispatchEvent(new Event("change"));
+  }
+
   function renderSeekBar() {
-    const total = Number.isFinite(audio.duration) ? audio.duration : timeline.lines[timeline.lines.length - 1].end;
+    const total = totalSeconds();
     seekBar.max = String(total);
     seekBar.value = String(audio.currentTime);
     seekCurrent.textContent = formatTime(audio.currentTime);
@@ -196,25 +217,85 @@
     if (audio.paused) audio.play();
     else audio.pause();
   });
-  document.getElementById("kataribe-prev").addEventListener("click", () => moveToLine(-1));
-  document.getElementById("kataribe-next").addEventListener("click", () => moveToLine(1));
+  prevButton.addEventListener("click", () => moveToLine(-1));
+  nextButton.addEventListener("click", () => moveToLine(1));
   seekBar.addEventListener("input", () => {
     audio.currentTime = Number(seekBar.value);
   });
+  // 字幕・文字起こし・速度は、ボタンと選択の処理を通して、aria の状態と defaultPlaybackRate を揃える
+  const seek = (seconds) => {
+    audio.currentTime = seconds;
+  };
+  const keyActions = {
+    play: () => playButton.click(),
+    back: () => seek(Math.max(audio.currentTime - 5, 0)),
+    forward: () => seek(Math.min(audio.currentTime + 5, totalSeconds())),
+    "prev-line": () => moveToLine(-1),
+    "next-line": () => moveToLine(1),
+    "prev-chapter": () => moveToChapter(-1),
+    "next-chapter": () => moveToChapter(1),
+    first: () => seek(0),
+    last: () => seek(timeline.lines[timeline.lines.length - 1].start),
+    percent: (key) => seek((totalSeconds() * Number(key)) / 10),
+    slower: () => stepRate(-1),
+    faster: () => stepRate(1),
+    captions: () => captionsButton.click(),
+    transcript: () => transcriptButton.click(),
+    keys: () => (keyList.open ? keyList.close() : keyList.showModal()),
+  };
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-    const target = event.target;
-    // 再生位置のバーでも、他のボタンと同じく矢印キーは行の移動にする（バー自身の刻みは細かすぎる）
-    if (target instanceof HTMLElement && target !== seekBar && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
-    event.preventDefault();
-    moveToLine(event.key === "ArrowRight" ? 1 : -1);
+    const binding = KataribeKeys.decide(event, keyList.open);
+    if (!binding) return;
+    event.preventDefault(); // 繰り返さない操作でも、押し続けた Space でページが流れないように既定の動作は止める
+    if (event.repeat && !binding.repeat) return;
+    keyActions[binding.action](event.key);
   });
-  const rateSelect = document.getElementById("kataribe-rate");
+  const keyTable = keyList.querySelector("dl");
+  for (const binding of KataribeKeys.BINDINGS) {
+    const keys = document.createElement("dt");
+    for (const name of KataribeKeys.keyNames(binding)) {
+      const kbd = document.createElement("kbd");
+      kbd.textContent = name;
+      keys.appendChild(kbd);
+    }
+    const label = document.createElement("dd");
+    label.textContent = binding.label;
+    keyTable.append(keys, label);
+  }
+  keyList.addEventListener("click", (event) => {
+    if (event.target === keyList) keyList.close(); // 枠の外（::backdrop）のクリックは dialog 自身に届く
+  });
+  const keysButton = document.getElementById("kataribe-keys-open");
+  keysButton.addEventListener("click", () => keyActions.keys());
+  const keyControls = [
+    [keysButton, "keys"],
+    [playButton, "play"],
+    [prevButton, "prev-line"],
+    [nextButton, "next-line"],
+    [captionsButton, "captions"],
+    [transcriptButton, "transcript"],
+    [rateSelect, "slower", "faster"],
+  ];
+  for (const [control, ...actions] of keyControls) control.setAttribute("aria-keyshortcuts", KataribeKeys.ariaShortcuts(actions));
   rateSelect.addEventListener("change", () => {
     // defaultPlaybackRate も揃えて、音声の読み込み直しがあっても速度を保つ
     audio.defaultPlaybackRate = audio.playbackRate = Number(rateSelect.value);
   });
+  // マウスやタッチで操作した部品は、操作のあとフォーカスを外す。残すと、Space などのキーがその部品に吸われてキー操作が効かない。
+  // キーボードで操作したときは、Tab の位置を保つためにフォーカスを残す
+  let pointerControl = null;
+  const controlOf = (target) => (target instanceof Element ? target.closest("button, select, input") : null);
+  document.addEventListener("pointerdown", (event) => (pointerControl = controlOf(event.target)), true);
+  document.addEventListener("keydown", () => (pointerControl = null), true);
+  document.addEventListener("click", (event) => {
+    const control = controlOf(event.target);
+    if (control instanceof HTMLButtonElement && event.detail > 0) control.blur();
+  });
+  for (const control of [seekBar, rateSelect]) {
+    control.addEventListener("change", () => {
+      if (pointerControl === control) control.blur();
+    });
+  }
   transcriptButton.addEventListener("click", () => {
     const open = transcript.hidden;
     transcript.hidden = !open;

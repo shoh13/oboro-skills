@@ -9,6 +9,8 @@ FREEZE_CSS = """
   animation-iteration-count: 1 !important;
   animation-fill-mode: forwards !important;
 }
+/* 画面の右下に固定したキー操作のボタンは、ステージの隅に重なって写るので消す */
+#kataribe-keys-open { display: none !important; }
 """
 
 

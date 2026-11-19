@@ -21,3 +21,12 @@ cognitive-rhythm-writing と japanese-tech-writing は自作ではありませ�
 
 - このリポジトリから外し、ccmarketplace から入れる。
 - 加えた変更（イ形容詞の規則など）を残したいなら、出典を明記して残す。Unlicense なので、どちらでも条件はありません。
+
+## kataribe と kataribe-slides の取り込み（2026-11-19 22:33）
+
+Notion v2 の `original` パック（version `7a0adaf9b6aa`）から取り込みました。Notion はページ本文を描画し直すときに、インラインコードの中身を壊します。たとえば `--out` が `-out` に、`**…**` が `*…**` に、`` `*-line*.png` `` が `` `-line*.png` `` に変わります。
+
+- **kataribe。** 本文と補助ファイルは、ページに添付された `src.zip` の中身をそのまま使いました。zip の中の SKILL.md は崩れていません。`__MACOSX/` と `.DS_Store` は除いています。
+- **kataribe-slides。** 崩れていない元がないので、ページの本文に `tools/repair-notion-body.py` の規則を当てて戻しました。この規則を kataribe（正解の zip がある）に当てると、崩れた 20 行のうち 16 行が正解と一致しました。戻せない 4 行は、どれも行頭の `*` が消えたものです。kataribe-slides には、その種類の崩れはありませんでした。
+
+doc-state-machine の本文にも、同じ崩れ（`--follow` が `-follow` など）が残っています（未修正）。

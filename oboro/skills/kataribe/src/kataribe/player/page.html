@@ -7,6 +7,9 @@
 <style>
 {{CSS}}
 </style>
+<style>
+{{KIT}}
+</style>
 </head>
 <!-- 操作ボタンのアイコンは Lucide (https://lucide.dev, ISC License)。Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022. -->
 <body>
@@ -39,6 +42,11 @@
     <button id="kataribe-transcript-toggle" type="button" aria-expanded="false" aria-controls="kataribe-transcript">{{ICON:list}}<span class="kataribe-label">文字起こし</span></button>
   </div>
   <section id="kataribe-transcript" aria-label="文字起こし" hidden></section>
+  <button id="kataribe-keys-open" type="button" aria-label="キー操作" aria-haspopup="dialog" aria-controls="kataribe-keys">?</button>
+  <dialog id="kataribe-keys" aria-label="キー操作">
+    <form method="dialog"><button type="submit" aria-label="閉じる">{{ICON:x}}</button></form>
+    <dl></dl>
+  </dialog>
 {{ABOUT}}
 </main>
 <audio id="kataribe-audio" src="data:audio/mp4;base64,{{AUDIO}}"></audio>
@@ -49,6 +57,9 @@
 </script>
 <script>
 {{FIGURESJS}}
+</script>
+<script>
+{{KEYSJS}}
 </script>
 <script>
 {{JS}}

@@ -3,22 +3,25 @@ import sys
 import tempfile
 from pathlib import Path
 
+from kataribe import ttscache
+from kataribe.adapters import voicevox
 from kataribe.art import ArtError, asset_report, asset_warnings, build_cast, used_faces
 from kataribe.audio import AudioError, concat_wavs, encode_aac
 from kataribe.browser import BrowserError
 from kataribe.check import lint_warnings, speed_warnings
 from kataribe.extras import write_extras
+from kataribe.layout import check_layout
 from kataribe.mouth import mouth_levels
 from kataribe.mp4 import DEFAULT_FPS, DEFAULT_SIZE, FPS_CHOICES, SIZES, make_mp4
 from kataribe.output import BuildError, out_dir, write_output
-from kataribe.project import ProjectError, load_project
-from kataribe.readcheck import ReadingCheckError, check_readings, format_rows, row_speed_warnings
+from kataribe.project import ProjectError, accent_words, load_project
+from kataribe.readcheck import ReadingCheckError, check_readings, format_rows, row_speed_warnings, row_split_warnings
 from kataribe.reading import spoken_text
 from kataribe.render import render_html, render_transcript
 from kataribe.shoot import shoot
 from kataribe.slides import build_slides, lint_slides
 from kataribe.timeline import build_timeline, measure_seconds
-from kataribe.tts import TtsError, synthesize
+from kataribe.tts import TtsError, adapter_identity, synthesize, uses_custom_adapter
 from kataribe.verify import MARKS, verify
 
 
@@ -31,24 +34,52 @@ STALE_NOTICE = "前回の out/ は古いままです（今回の台本は反映�
 MAX_HTML_BYTES = 16 * 1024 * 1024
 
 
-def _synthesize(project, work: Path) -> tuple[dict, bytes]:
+def _prepare_engine(words: tuple[tuple[str, int], ...]) -> str:
+    """最初に合成する行の前に1回だけ、エンジンを用意してユーザー辞書を合わせる（全行がキャッシュにあれば、エンジンを起動しない）。"""
+    try:
+        return voicevox.prepare_engine(words)
+    except voicevox.AdapterError as e:
+        raise TtsError(str(e)) from None
+
+
+def _synthesize(project, work: Path, cache: bool = True) -> tuple[dict, bytes]:
+    custom = uses_custom_adapter()  # 独自のアダプターには、ユーザー辞書を渡さない
+    words = () if custom else accent_words(project)
+    directory = ttscache.cache_dir() if cache else None
+    adapter = adapter_identity() if directory is not None else ""
+    engine = None
     wavs = []
+    synthesized = 0
     for index, line in enumerate(project.lines):
         assert line.speaker is not None  # 地の文は slides だけで、動画の台本にはない
         wav = work / f"{index}.wav"
-        synthesize(spoken_text(line, project.readings), line.speaker, wav)
+        text = spoken_text(line, project.readings)
+        key = ttscache.cache_key(text=text, voice=line.speaker, speed=1.0, adapter=adapter, words=words)
+        if directory is None or not ttscache.fetch(directory, key, wav):
+            if not custom and engine is None:
+                engine = _prepare_engine(words)
+            synthesize(text, line.speaker, wav, engine=engine)
+            synthesized += 1
+            if directory is not None:
+                try:
+                    ttscache.store(directory, key, wav)
+                except OSError as e:
+                    _warn([f"警告: 音声のキャッシュに書き込めません（{e}）。この build では、キャッシュを使いません"])
+                    directory = None
         wavs.append(wav)
+    total = len(project.lines)
+    _warn([f"音声: {total} 行のうち、合成 {synthesized} 行、キャッシュ {total - synthesized} 行"])
     timeline = build_timeline(project, [measure_seconds(wav) for wav in wavs], [mouth_levels(wav) for wav in wavs])
     return timeline, concat_wavs(wavs)
 
 
-def build(root: Path, extras: bool = False, out: Path | None = None) -> None:
+def build(root: Path, extras: bool = False, out: Path | None = None, cache: bool = True) -> None:
     try:
         project = load_project(root)
         _warn(lint_warnings(project))
         cast = build_cast(project)  # 素材の取得・検証は、時間のかかる音声合成の前に行う
         with tempfile.TemporaryDirectory() as work:
-            timeline, audio = _synthesize(project, Path(work))
+            timeline, audio = _synthesize(project, Path(work), cache)
         _warn(speed_warnings(timeline))
         embedded_audio = encode_aac(audio)  # 単一HTMLは AAC。副産物と mp4 は WAV のまま
 
@@ -81,10 +112,11 @@ def lint(root: Path, slides: bool = False) -> None:
 
 def readings(root: Path) -> None:
     """合成に渡す文の読みと音声の長さを、台本の行と並べて表示する（VOICEVOX の音声クエリ。音声は作らない）。"""
-    project = load_project(root)
+    project = load_project(root, require_scenes=False)
     rows = check_readings(project)
     print(format_rows(rows))
     _warn(row_speed_warnings(rows))
+    _warn(row_split_warnings(rows))
 
 
 def run_verify(root: Path, out: Path | None = None) -> int:
@@ -101,6 +133,14 @@ def run_verify(root: Path, out: Path | None = None) -> int:
     return 0 if result.ok else 1
 
 
+def run_layout(root: Path, out: Path | None = None) -> int:
+    problems = check_layout(root, out=out)
+    for problem in problems:
+        print(problem)
+    print("layout: OK" if not problems else f"layout: NG（{len(problems)} 件）")
+    return 1 if problems else 0
+
+
 def assets() -> None:
     print("\n".join(asset_report()))
 
@@ -112,6 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     build_parser = commands.add_parser("build", help="台本と画面から単一HTMLを作る")
     build_parser.add_argument("project", type=Path)
     build_parser.add_argument("--extras", action="store_true", help="MP4化向けの副産物（音声・字幕VTT・タイムライン・利用条件）も出す")
+    build_parser.add_argument(
+        "--no-cache", action="store_true", help="音声のキャッシュを使わずに全行を合成する（キャッシュにも書かない）"
+    )
     lint_parser = commands.add_parser("lint", help="台本を検査する（音声は合成しない）")
     lint_parser.add_argument("project", type=Path)
     lint_parser.add_argument("--slides", action="store_true", help="スライドの台本として検査する（地の文を許す）")
@@ -123,14 +166,21 @@ def main(argv: list[str] | None = None) -> int:
     slides_parser.add_argument("project", type=Path)
     shoot_parser = commands.add_parser("shoot", help="シーンごとのスクリーンショットを撮る")
     shoot_parser.add_argument("project", type=Path)
-    shoot_parser.add_argument("--at", choices=["start", "mid", "end"], default="end")
+    shoot_parser.add_argument(
+        "--at",
+        choices=["start", "mid", "end", "full", "changes"],
+        default="end",
+        help="full: 要素が消える直前の行と最後の行を撮る。changes: 見た目が変わる行をすべて撮る",
+    )
     verify_parser = commands.add_parser("verify", help="build 済みの動画を実時間で再生して検証する")
     verify_parser.add_argument("project", type=Path)
+    layout_parser = commands.add_parser("layout", help="build 済みの動画の図の、ステージからのはみ出しと立ち絵との重なりを測る")
+    layout_parser.add_argument("project", type=Path)
     mp4_parser = commands.add_parser("mp4", help="副産物（build --extras）から MP4 を作る")
     mp4_parser.add_argument("project", type=Path)
     mp4_parser.add_argument("--size", choices=list(SIZES), default=DEFAULT_SIZE)
     mp4_parser.add_argument("--fps", type=int, choices=FPS_CHOICES, default=DEFAULT_FPS)
-    for command_parser in (build_parser, slides_parser, shoot_parser, verify_parser, mp4_parser):
+    for command_parser in (build_parser, slides_parser, shoot_parser, verify_parser, layout_parser, mp4_parser):
         command_parser.add_argument("--out", type=Path, help="出力先のディレクトリ（既定は <project>/out）")
     args = parser.parse_args(argv)
     try:
@@ -146,10 +196,12 @@ def main(argv: list[str] | None = None) -> int:
             make_mp4(args.project, args.size, args.fps, out=args.out)
         elif args.command == "verify":
             return run_verify(args.project, out=args.out)
+        elif args.command == "layout":
+            return run_layout(args.project, out=args.out)
         elif args.command == "shoot":
             shoot(args.project, args.at, out=args.out)
         else:
-            build(args.project, extras=args.extras, out=args.out)
+            build(args.project, extras=args.extras, out=args.out, cache=not args.no_cache)
     except (ProjectError, ArtError, TtsError, AudioError, BuildError, BrowserError, ReadingCheckError) as e:
         print(f"エラー: {e}", file=sys.stderr)
         for note in getattr(e, "__notes__", []):

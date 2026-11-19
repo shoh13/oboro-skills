@@ -10,7 +10,7 @@
 - `out/transcript.md`: 文字起こし。
 - `out/slides.pptx`（`slides`）: 音声なしの PowerPoint のスライド。地の文の解説に、2人が表情を変えながら、バラエティ番組のテロップのような大きな文字でコメントしていく。台本の1行が1枚。
 - `out/extras/`（`build --extras`）: MP4化向けの音声、字幕（VTT）、タイムライン、利用条件。
-- `out/frames/`（`shoot`）: シーンごとのスクリーンショット。
+- `out/frames/`（`shoot`）: シーンごとのスクリーンショット。行ごとに撮る指定（`--at full`・`--at changes`）の画像は `out/frames/full/`・`out/frames/changes/`。
 - `out/mp4/video.mp4`（`mp4`）: 画面と字幕を焼き込んだ MP4。
 - 台本の検査（`lint`）と、再生の検証（`verify`。字幕・シーン・章・行単位の出現・進行変数・立ち絵の表情と口の7項目）。
 
@@ -21,7 +21,7 @@
 | 共通 | [uv](https://docs.astral.sh/uv/)（Python 3.11 以上を使う） |
 | 音声の合成（`build`） | Docker。VOICEVOX のエンジンを Docker で起動する（初回はイメージを取得する） |
 | 立ち絵の素材（`build`） | ずんだもん・四国めたんは、初回だけネットワーク（配布元から取得してキャッシュする）。春日部つむぎ・雨晴はう・あんこもんは、初回だけ素材の zip を `~/Documents/kataribe-assets` に置く（下の「立ち絵の素材」）。状態は `kataribe assets` で確かめられる |
-| スクリーンショット・再生検証・MP4（`shoot`・`verify`・`mp4`） | Google Chrome。単一HTMLの音声は AAC なので、AAC を再生できない Playwright の Chromium では止まる |
+| スクリーンショット・再生検証・配置の検査・MP4（`shoot`・`verify`・`layout`・`mp4`） | Google Chrome。単一HTMLの音声は AAC なので、AAC を再生できない Playwright の Chromium では止まる |
 
 依存パッケージの初回の取得には `pypi.org` と `files.pythonhosted.org` への接続が要ります。`assets` はネットワークも Docker もブラウザも使いません。
 
@@ -107,17 +107,18 @@ claude plugin install kataribe@kataribe
 uv run --project <プラグイン> kataribe <コマンド> <project>
 ```
 
-`build`・`slides`・`shoot`・`verify`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます（既定は `<project>/out`。下の表の `out/` はこの出力先です）。`build` で `--out` を付けたら、`shoot`・`verify`・`mp4` にも同じ `--out` を付けます。
+`build`・`slides`・`shoot`・`verify`・`layout`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます（既定は `<project>/out`。下の表の `out/` はこの出力先です）。`build` で `--out` を付けたら、`shoot`・`verify`・`layout`・`mp4` にも同じ `--out` を付けます。
 
 | コマンド | 内容 |
 | --- | --- |
-| `build <project>` | 音声を合成して `out/video.html` と `out/transcript.md` を作る。`--extras` を付けると副産物も作る |
+| `build <project>` | 音声を合成して `out/video.html` と `out/transcript.md` を作る。行ごとの音声はキャッシュ（`~/.cache/kataribe/tts`）にあれば合成しない。`--extras` を付けると副産物も作る。`--no-cache` でキャッシュを使わない |
 | `lint <project> [--slides]` | 台本と画面を検査する。音声は合成しない。`--slides` はスライドの台本として検査する |
 | `assets` | 話者ごとの立ち絵素材の状態（`キャッシュ済み`・`zip あり`・`自動取得可`・`素材なし`）を表示する。ネットワークに接続せず、zip の展開もキャッシュへの書き込みもしない |
-| `readings <project>` | 合成に渡す文の読みと、音声クエリから計算した音声の長さを、行ごとに台本の表示文と並べて表示し、字幕の表示速度の超過（7.5 字/秒）を警告する。VOICEVOX の音声クエリを使い、音声は作らない（Docker が要る）。読みが正しいことは保証しない（手順は [`skills/video/SKILL.md`](skills/video/SKILL.md) の「読みを確かめる」） |
+| `readings <project>` | 合成に渡す文の読みと、置き換えた `readings.json` の項目と、音声クエリから計算した音声の長さを、行ごとに台本の表示文と並べて表示し、字幕の表示速度の超過（7.5 字/秒）を警告する。VOICEVOX の音声クエリを使い、音声は作らない（Docker が要る）。`scenes.html` はなくてよい。読みが正しいことは保証しない（手順は [`skills/video/SKILL.md`](skills/video/SKILL.md) の「読みを確かめる」） |
 | `slides <project>` | 地の文とコメントで進む PowerPoint のスライド `out/slides.pptx` を作る。音声は合成しない |
-| `shoot <project> [--at start\|mid\|end]` | 各シーンのスクリーンショットを `out/frames/` に撮る（先に `build`） |
+| `shoot <project> [--at start\|mid\|end\|full\|changes]` | 各シーンのスクリーンショットを `out/frames/` に撮る（先に `build`）。`full` は要素が消える直前の行と最後の行を、`changes` は見た目が変わる行をすべて撮る |
 | `verify <project>` | `out/video.html` を実時間で再生し、7項目（字幕・シーン・章・行単位の出現・進行変数・立ち絵の表情と口など）を検証する（先に `build`） |
+| `layout <project>` | 各シーンの表示が最も多い行で、図のステージからのはみ出しと、立ち絵との重なりを測る。問題があれば終了コード1（先に `build`） |
 | `mp4 <project> [--size 1280x720\|1920x1080] [--fps 24\|30\|60]` | `out/mp4/video.mp4` を作る（先に `build --extras`） |
 
 典型的な流れ:
@@ -160,7 +161,8 @@ open <project>/out/slides.pptx
 
 | 変数 | 内容 |
 | --- | --- |
-| `KATARIBE_TTS_CMD` | TTS アダプターのコマンドを差し替える。テキストを stdin で受け取り、`--voice`、`--speed`、`--output`（WAV）を受け付ける。この場合、`readings` は読みを取れないので失敗する |
+| `KATARIBE_TTS_CMD` | TTS アダプターのコマンドを差し替える。テキストを stdin で受け取り、`--voice`、`--speed`、`--output`（WAV）を受け付ける。この場合、`readings` は読みを取れないので失敗する。アクセントの辞書は使わない |
+| `KATARIBE_TTS_CACHE` | 行ごとの音声のキャッシュの置き場所（既定は `~/.cache/kataribe/tts`）。`off` で無効 |
 | `KATARIBE_VOICEVOX_URL` | Docker を使わず、起動済みの VOICEVOX エンジンの URL（例: `http://127.0.0.1:50021`）を使う |
 | `KATARIBE_FFMPEG` | ffmpeg の実行ファイルを差し替える |
 | `KATARIBE_CHAR_CACHE` | 立ち絵素材のキャッシュの場所を差し替える（既定は `~/.cache/kataribe/characters`） |
@@ -207,11 +209,13 @@ uv run pytest -m "not integration" # Docker の VOICEVOX を使うテストを�
 
 - `src/kataribe/`: 本体。`cli.py` がコマンドの入口です。
 - `src/kataribe/adapters/voicevox.py`: 既定の TTS アダプター（VOICEVOX）。音声クエリから読みを取る関数もある（`readings` が使う）。
-- `src/kataribe/readcheck.py`: `readings`。合成に渡す文と、エンジンの読みと、計算した音声の長さを、行ごとに並べる。
+- `src/kataribe/readcheck.py`: `readings`。合成に渡す文と、置き換えた辞書の項目と、エンジンの読みと、アクセントと、計算した音声の長さを、行ごとに並べ、片仮名語の区切りを警告する。
+- `src/kataribe/ttscache.py`: 行ごとの音声のキャッシュ。
+- `src/kataribe/layout.py`: `layout`。図のはみ出しと立ち絵との重なりの測定（測定はブラウザ、判定は Python の純粋な関数）。
 - `src/kataribe/art.py`: 立ち絵の素材の取得・検証・キャッシュ・レイヤーの書き出し。
 - `src/kataribe/characters/`: 立ち絵の定義（話者ごとの表情とレイヤーの選び方）。
 - `src/kataribe/mouth.py`: 音声の音量から口パクの段階を計算する。
-- `src/kataribe/player/`: 単一HTMLのプレーヤー（HTML・CSS・JS）。`cast.js` は立ち絵の表情・口・まばたきを決める純粋な関数。
+- `src/kataribe/player/`: 単一HTMLのプレーヤー（HTML・CSS・JS）。`cast.js` は立ち絵の表情・口・まばたきを決める純粋な関数。`keys.js` はキー操作の表と判定の純粋な関数。`kit.css` は図の部品（`kt-`）で、プレーヤーとスライドの図に埋め込む。
 - `src/kataribe/slides.py`: スライド（`slides`）の PowerPoint の組み立て（python-pptx）。`diagrams.py` は図を撮る、`images.py` は `scenes.html` の画像を埋め込む。
 - `skills/video/SKILL.md`・`skills/slides/SKILL.md`: このプラグインを使う Claude Code スキル（動画・スライド）の仕様。振る舞いの正本です。
 - `tests/`: テスト。`tests/compare_speed.py <project>` は、音声クエリから計算した長さと build の実測長を比べ、字幕の表示速度の警告の判定が一致するかを示す（Docker が要る）。

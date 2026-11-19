@@ -6,12 +6,14 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,6 +35,8 @@ class AdapterError(Exception):
 class Spoken:
     reading: str  # エンジンが組み立てた読み
     seconds: float  # 音声クエリから計算した音声の長さ
+    accented: str = ""  # アクセント付きの読み（accented_reading_of）
+    phrases: tuple[tuple[str, ...], ...] = ()  # アクセント句ごとのモーラのカタカナ
 
 
 def _docker(*args: str) -> subprocess.CompletedProcess:
@@ -74,13 +78,30 @@ def _ensure_container() -> str:
     raise AdapterError(f"VOICEVOX が起動しませんでした。`docker logs {CONTAINER}` を確認してください")
 
 
+def _external_url() -> str | None:
+    return os.environ.get("KATARIBE_VOICEVOX_URL") or None
+
+
 def engine_url() -> str:
     """使う VOICEVOX エンジンの URL。KATARIBE_VOICEVOX_URL があればそれを、なければ Docker のコンテナを起動する。"""
-    return os.environ.get("KATARIBE_VOICEVOX_URL") or _ensure_container()
+    return _external_url() or _ensure_container()
 
 
-def _request(url: str, data: bytes | None = None, content_type: str | None = None) -> bytes:
-    request = urllib.request.Request(url, data=data, method="POST" if data is not None else "GET")
+def uses_own_container() -> bool:
+    """kataribe が起動する Docker のコンテナを使うか（KATARIBE_VOICEVOX_URL がない）。"""
+    return _external_url() is None
+
+
+def engine_identity() -> str:
+    """合成する音声を左右するエンジンの版。自前のコンテナはイメージのタグ、KATARIBE_VOICEVOX_URL はエンジンの /version。"""
+    url = _external_url()
+    if url is None:
+        return IMAGE
+    return "voicevox_engine " + _request(f"{url}/version").decode("utf-8", "replace").strip()
+
+
+def _request(url: str, data: bytes | None = None, content_type: str | None = None, method: str | None = None) -> bytes:
+    request = urllib.request.Request(url, data=data, method=method or ("POST" if data is not None else "GET"))
     if content_type:
         request.add_header("Content-Type", content_type)
     try:
@@ -134,6 +155,33 @@ def reading_of(query: dict) -> str:
     return reading
 
 
+def accented_reading_of(query: dict) -> str:
+    """音声クエリから、アクセント付きの読みを返す（AquesTalk 風の記法）。
+
+    アクセント核（その拍のあとで音が下がる拍。accent は句の先頭からの1始まりの位置）のあとに「'」を置き、
+    アクセント句を「/」で区切り、ポーズを「、」で示す。
+    """
+    if "accent_phrases" not in query:
+        raise AdapterError("VOICEVOX の音声クエリに読み（accent_phrases）がありません")
+    text = ""
+    after_pause = True
+    for phrase in query["accent_phrases"]:
+        if text and not after_pause:
+            text += "/"
+        for position, mora in enumerate(phrase["moras"], start=1):
+            text += mora["text"] + ("'" if position == phrase.get("accent") else "")
+        pause = phrase.get("pause_mora")
+        if pause:
+            text += "、"
+        after_pause = bool(pause)
+    return text
+
+
+def phrase_moras(query: dict) -> tuple[tuple[str, ...], ...]:
+    """音声クエリのアクセント句ごとの、モーラのカタカナ。"""
+    return tuple(tuple(mora["text"] for mora in phrase["moras"]) for phrase in query.get("accent_phrases", ()))
+
+
 def query_seconds(query: dict) -> float:
     """音声クエリから音声の長さ（秒）を計算する。エンジンの合成と同じ手順で、音素ごとにフレームへ丸める。
 
@@ -163,7 +211,7 @@ def read_aloud(base: str, items: list[tuple[str, str]]) -> list[Spoken]:
     results = []
     for text, voice in items:
         query = _query(base, _speaker_id(speakers, voice), text)
-        results.append(Spoken(reading_of(query), query_seconds(query)))
+        results.append(Spoken(reading_of(query), query_seconds(query), accented_reading_of(query), phrase_moras(query)))
     return results
 
 
@@ -176,6 +224,86 @@ def synthesize(base: str, text: str, voice: str, speed: float) -> bytes:
         data=json.dumps(query).encode("utf-8"),
         content_type="application/json",
     )
+
+
+# ユーザー辞書の発音の拍の数え方（voicevox_engine の user_dict/model.py の UserDictWord と同じ規則）
+_MORA = re.compile(
+    "(?:[イ][ェ]|[ヴ][ャュョ]|[ウクグトド][ゥ]|[テデ][ィェャュョ]|[クグ][ヮ]"
+    "|[キシチニヒミリギジヂビピ][ェャュョ]|[キニヒミリギビピ][ィ]"
+    "|[クツフヴグ][ァ]|[ウクスツフヴグズ][ィ]|[ウクツフヴグ][ェォ]"
+    "|[ァ-ヴー])"
+)
+KATAKANA = re.compile(r"[ァ-ヴ][ァ-ヴー]*")  # 長音で始まる読みは、拍にならないので受け付けない
+
+
+def mora_count(pronunciation: str) -> int:
+    """カタカナの発音の拍の数。ユーザー辞書のアクセント型は 0 からこの数まで。"""
+    return len(_MORA.findall(pronunciation))
+
+
+def _zenkaku(text: str) -> str:
+    """エンジンがユーザー辞書の表記に施す変換（半角の英数字・記号を全角へ）。"""
+    return "".join(chr(ord(char) + 0xFEE0) if "!" <= char <= "~" else char for char in text)
+
+
+# 既定の優先度（5）では、エンジンの辞書の解析（「数テラ」＋「バイト」など）に負けて、登録した語が使われないことがある
+WORD_PRIORITY = 10
+
+
+def _word_query(pronunciation: str, accent: int) -> str:
+    return urllib.parse.urlencode(
+        {"surface": pronunciation, "pronunciation": pronunciation, "accent_type": accent, "priority": WORD_PRIORITY}
+    )
+
+
+def _write_word(url: str, method: str, pronunciation: str, accent: int) -> None:
+    try:
+        _request(url, data=b"", method=method)
+    except AdapterError as e:
+        raise AdapterError(f"VOICEVOX のユーザー辞書に「{pronunciation}」（アクセント {accent}）を登録できません: {e}") from None
+
+
+def sync_user_dict(base: str, words: Iterable[tuple[str, int]], exclusive: bool) -> None:
+    """エンジンのユーザー辞書を words（発音のカタカナ, アクセント型）に合わせる。語の表記は発音と同じカタカナ。
+
+    exclusive なら、辞書を words ちょうどにする（words にない語と、同じ表記の重複を消す）。kataribe のコンテナ用。
+    exclusive でなければ、追加と更新だけで、消さない（KATARIBE_VOICEVOX_URL の、他の人も使うエンジン用）。
+    いまの辞書と比べて違う語だけを書くので、何度実行しても同じ状態になる。
+    """
+    wanted = {_zenkaku(pronunciation): (pronunciation, accent) for pronunciation, accent in words}
+    current: dict[str, dict] = json.loads(_request(f"{base}/user_dict"))
+    present: set[str] = set()
+    for uuid, entry in current.items():
+        surface = entry.get("surface")
+        if surface not in wanted or (exclusive and surface in present):
+            if exclusive:
+                _request(f"{base}/user_dict_word/{urllib.parse.quote(uuid)}", method="DELETE")
+            continue
+        present.add(surface)
+        pronunciation, accent = wanted[surface]
+        if (
+            entry.get("pronunciation") != pronunciation
+            or entry.get("accent_type") != accent
+            or entry.get("priority", WORD_PRIORITY) != WORD_PRIORITY
+        ):
+            url = f"{base}/user_dict_word/{urllib.parse.quote(uuid)}?{_word_query(pronunciation, accent)}"
+            _write_word(url, "PUT", pronunciation, accent)
+    for surface, (pronunciation, accent) in wanted.items():
+        if surface not in present:
+            _write_word(f"{base}/user_dict_word?{_word_query(pronunciation, accent)}", "POST", pronunciation, accent)
+
+
+def prepare_engine(words: Sequence[tuple[str, int]]) -> str:
+    """音声クエリの前に1回、親のプロセスで呼ぶ。エンジンを用意してユーザー辞書を合わせ、エンジンの URL を返す。
+
+    自前のコンテナでは、辞書をこのプロジェクトの語ちょうどにする（前のプロジェクトの語を残さない）。
+    KATARIBE_VOICEVOX_URL のエンジンでは、追加と更新だけ（登録する語がなければ辞書に触れない）。
+    """
+    base = engine_url()
+    own = uses_own_container()
+    if own or words:
+        sync_user_dict(base, words, exclusive=own)
+    return base
 
 
 def main(argv: list[str] | None = None) -> int:
