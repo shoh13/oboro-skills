@@ -30,3 +30,11 @@ Notion v2 の `original` パック（version `7a0adaf9b6aa`）から取り込み
 - **kataribe-slides。** 崩れていない元がないので、ページの本文に `tools/repair-notion-body.py` の規則を当てて戻しました。この規則を kataribe（正解の zip がある）に当てると、崩れた 20 行のうち 16 行が正解と一致しました。戻せない 4 行は、どれも行頭の `*` が消えたものです。kataribe-slides には、その種類の崩れはありませんでした。
 
 doc-state-machine の本文にも、同じ崩れ（`--follow` が `-follow` など）が残っています（未修正）。
+
+## doc-state-machine の取り込み（2026-11-20 01:06）
+
+Notion v2 の `original` パック（version `7a0adaf9b6aa`）から取り込みました。正本は v2 で、ほかに崩れていない元はありません。
+
+- **本文。** `tools/repair-notion-body.py` で戻しました。戻した主な箇所は `--follow`、`--url`、`--items`、`--arrows`、`--ids`、`--tab`、コードブロックの言語名 `text`、`[検討中]` です。
+- **手で直した 1 か所（推測）。** 太字の見出し語の例 `` `*名前.** 本文` `` は、`` `**名前**. 本文` `` に直しました。`scripts/extract-md.mjs` の正規表現が `**名前**` の直後に `.` が続く形を受け付けるので、それに合わせています。
+- **欠けているファイル。** `tests/run.mjs` が読む `tests/fixture-dom.js` は、v2 のパックに入っていません（11-19 と 11-20 のどちらのパックにもない）。テストは build の検査 7 件が通った後、このファイルを読むところで止まります。Notion が `.js` の添付を受け付けなかった可能性があります（推測。`.mjs` と `.cjs` は入っている）。
