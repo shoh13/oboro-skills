@@ -12,7 +12,7 @@ user-invocable: false
 
 ### 共通実行コンテキスト
 
-- 環境：Lore、Notion、個人Repo、会社Repoなどの実行環境
+- 環境：Notion、個人Repo、会社Repoなどの実行環境
 - 対象：プロジェクト、Repo、ページ、DBなどの共通対象
 - 基準保存先：ADR保存先を決める起点
 - 適用ポリシー：命名規則、ADR形式、組織規則、共有範囲
@@ -42,7 +42,8 @@ user-invocable: false
 
 - Titleは意思決定を表す文にする。
 - Statusは該当する1項目だけを有効にする。
-- Loreへ保存する場合は`lore-decision` action=`create`を使い、Titleを`decision`、各節を`rationale`、AlternativesとConsequencesを同名の引数へ入れる。置き換えは新ADRの作成後に`supersede`で旧ADRを置き換え済みにする。
+- 1つのRepoのコードに関する設計判断は、そのRepoの`docs/adr/`にファイルとして置く。
+- それ以外の設計判断は、NotionのKnowledge（種類decision）に新しい行として書く。書き方と置き換えの記録方法は、エントリページ[エージェント運用ガイド](https://app.notion.com/p/421ed7564258812c8b4dfc3c0cf8d363)に従う。
 - Decision、Context、Considerationを特に明確にする。
 - 判断に不可欠な情報はリンクだけに依存せず本文にも残す。
 
