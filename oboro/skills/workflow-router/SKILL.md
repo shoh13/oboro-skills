@@ -85,7 +85,7 @@ disable-model-invocation: true
 | codebase-design | 深いモジュールを設計するときの共通の語彙。interface、シームの位置、テストしやすさを決める | コードベース全体の候補探索（improve-codebase-architecture） | 対象モジュール | 深さ、シーム、テストの表面についての判断 | 対象コードがある |
 | domain-modeling | プロジェクトのドメインモデルを作って詰め、用語集（`GLOSSARY.md`）とADRに書く | 既存用語の参照だけ | 対象ドメイン、既存の`GLOSSARY.md` | 解決した用語が`GLOSSARY.md`に、必要な判断が`docs/adr/`にある | 対象Repo |
 
-直接候補から除外する内部基盤Primitive：`artifact-destination`、`evidence-research`、`guided-setup`、`discussion-synthesis`、`grilling`、`adr-recorder`、`tdd`。これらは他のSkillから呼ばれる部品として扱い、直接は推薦しない。
+直接候補から除外する内部基盤Primitive：`artifact-destination`、`evidence-research`、`guided-setup`、`discussion-synthesis`、`grilling`、`adr-recorder`、`tdd`。これらは直接は推薦しない。
 
 ## 手順
 
