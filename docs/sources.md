@@ -39,6 +39,8 @@
 | ja-lint-register | 自作 |
 | summarize-technical-discussion | 自作。旧「技術議論を要約する」から再設計 |
 
+ja-lint-register は、要らないという持ち主の判断で 2026-11-26 に外しました。
+
 business-japanese-writing は戻していません。本家の coji/natural-japanese の `natural-japanese` を入れました。
 
 ## 本家の名前に合わせた参照（2026-11-25）
