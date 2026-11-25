@@ -49,17 +49,19 @@ user-invocable: false
 
 ユーザー指定と対象固有ポリシーで決まらない場合、個人の作業（個人Repo・個人プロジェクト）では次を環境既定とする。会社Repoと組織の成果物には適用しない。
 
+保存先の正本はNotionのエントリページ[エージェント運用ガイド](https://app.notion.com/p/421ed7564258812c8b4dfc3c0cf8d363)の保存先表である。下の表は保存先の名前だけを示す。項目、置き換え、ビューなどの書き方はエントリページに従う。表とエントリページが食い違うときはエントリページを採る。表にない成果物（セッションの引き継ぎ、オーナー本人についての事実など）も、エントリページの保存先表で決める。
+
 | 成果物 | 保存先 | 書き込み方法 |
 | --- | --- | --- |
-| プロジェクトに属するタスク | Lore（`lore-task`、`projectName`にLoreのプロジェクト名） | create・update・close |
-| プロジェクトに属さない単発タスク | Notionの\[DB\]個人タスク（親プロジェクトは空） | ページ作成・更新 |
-| 設計判断・ADR | Lore（`lore-decision`） | create。置き換えは`supersede` |
-| 仕様書・調査記録・手順・メモ | Lore（`lore-memory` save。kindはnote・runbook・policy） | save・update |
-| プロジェクトの現状 | Lore（`lore-memory` save、`subject`と`replace: true`） | 上書き保存 |
-| 新しいプロジェクト | LoreのProjects | `lore-project`で確認し、無ければProjects DBへ行を追加 |
+| タスク（プロジェクトに属するものは親プロジェクトを入れ、属さないものは空にする） | Notionの生活タスク | 担当が AI の既存の行の、リレーションとステータスの更新だけ。新しい行が要るときは確認必要 |
+| 1つのRepoのコードに関する設計判断・ADR | そのRepoの`docs/adr/` | ファイル作成。置き換えは新しいADRから旧ADRを指す |
+| それ以外の設計判断・ADR | NotionのKnowledge（種類decision） | 新しい行の作成だけ（追記のみ）。置き換えは新しい行の「置き換え」で旧行を指す |
+| 仕様書・調査記録・手順・メモ | NotionのKnowledge（種類note・runbook・policy） | 新しい行の作成・更新 |
+| プロジェクトの現状 | NotionのKnowledge（種類state） | 新しい行の作成だけ（追記のみ）。「置き換え」で前の行を指す |
+| 新しいプロジェクト | NotionのProjects | 読んで存在を確認する。無ければ行を足す前に確認必要 |
 
 - Notionの\[DB\]個人プロジェクトは廃止済みのため、保存先として返さない。
-- Loreのプロジェクト名は`lore-project` action=`list`で存在を確認してから返す。
+- プロジェクトは、Projectsに行があることを確認してから返す。
 
 ## 出力Contract
 
