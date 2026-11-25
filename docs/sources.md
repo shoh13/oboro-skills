@@ -44,6 +44,7 @@ business-japanese-writing は戻していません。本家の coji/natural-japa
 ## 本家の名前に合わせた参照（2026-11-25）
 
 - workflow-router の `setup-project-workflow`（2 か所）を、本家の名前 `setup-matt-pocock-skills` に直しました。
+- mattpocock の `code-review` は、Claude Code 組み込みの `/code-review` を隠すので、`code-review-mp` という名前で入れています（`npx skills add mattpocock/skills -s code-review --rename code-review-mp`、持ち主の判断）。workflow-router（1 か所）と solution-review（7 か所）の参照を `code-review-mp` に直しました。
 
 ## kataribe と kataribe-slides の取り込み（2026-11-19 22:33）
 
