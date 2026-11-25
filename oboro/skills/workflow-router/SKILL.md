@@ -56,7 +56,7 @@ disable-model-invocation: true
 | format-project-page | 既存ページの意味を変えず構造だけ整える | 内容の再設計・補完 | 対象ページ、変更禁止範囲 | 文言・参照を保持して読みやすい | 編集可能な既存ページ |
 | grill-with-docs | 計画や設計を問い詰めて詰め、その場で用語集（`GLOSSARY.md`）とADRを書く | 合意済み内容の仕様化 | 計画・設計、対象Repo | 詰めた計画と、更新した`GLOSSARY.md`・`docs/adr/` | 対話できる。本文は`grilling`と`domain-modeling`を呼ぶだけ |
 | guided-retrospective | 期間やプロジェクトを本人の意味づけまで振り返る | 単なる活動報告・他者評価 | 期間、目的、参照記録 | 学び・課題・次の行動が確認済み | 本人が対話できる |
-| implement | 仕様またはチケットに書かれた作業を実装する | 仕様・チケットが未確定 | 仕様、またはissue trackerのチケット参照 | `tdd`で実装し、型検査とテストを通し、`code-review`でレビューし、今のブランチへcommit | 仕様かチケットがある。本文の`code-review`は組み込みの`/code-review`に当たる |
+| implement | 仕様またはチケットに書かれた作業を実装する | 仕様・チケットが未確定 | 仕様、またはissue trackerのチケット参照 | `tdd`で実装し、型検査とテストを通し、`code-review`でレビューし、今のブランチへcommit | 仕様かチケットがある。Claude Codeでは本文の`code-review`は組み込みの`/code-review`に当たる。Codexには当たる先がないので、レビューが要るときは`code-review-mp`を直接呼ぶ |
 | improve-codebase-architecture | コードベースを走査して深くできる箇所を探し、HTMLレポートで示し、選んだ1件を詰める | 1つのモジュールの設計だけ、既知のバグ | Repo、`GLOSSARY.md`、`docs/adr/` | OSの一時ディレクトリのHTMLレポートと、選んだ候補の詰め。必要なら`GLOSSARY.md`とADRを更新 | 読めるコードベース |
 | notion-slide-layout | Notion内容をスライド風に再配置する | PPTX作成、追加調査 | 対象ページまたは選択範囲 | 内容保持したスライド風レイアウト | Notion上の入力がある |
 | photo-poster | 入力写真を3:4のミニマルポスターへ変換する | 写真なし生成、補正だけ、コラージュ | 写真、任意の文字、配置先 | 写真ごとの完成ポスター | 入力写真がある |
@@ -85,7 +85,7 @@ disable-model-invocation: true
 | codebase-design | 深いモジュールを設計するときの共通の語彙。interface、シームの位置、テストしやすさを決める | コードベース全体の候補探索（improve-codebase-architecture） | 対象モジュール | 深さ、シーム、テストの表面についての判断 | 対象コードがある |
 | domain-modeling | プロジェクトのドメインモデルを作って詰め、用語集（`GLOSSARY.md`）とADRに書く | 既存用語の参照だけ | 対象ドメイン、既存の`GLOSSARY.md` | 解決した用語が`GLOSSARY.md`に、必要な判断が`docs/adr/`にある | 対象Repo |
 
-直接候補から除外する内部基盤Primitive：`artifact-destination`、`evidence-research`、`guided-setup`、`discussion-synthesis`、`grilling`、`adr-recorder`、`tdd`。これらは直接は推薦しない。
+直接候補から除外する内部基盤Primitive：`artifact-destination`、`evidence-research`、`guided-setup`、`discussion-synthesis`、`adr-recorder`。これらは直接は推薦しない。
 
 ## 手順
 
