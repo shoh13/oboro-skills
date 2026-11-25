@@ -147,14 +147,14 @@ disable-model-invocation: true
 
 11節の出力を出し切ったら、ユーザーのルート判断を待つ。この skill 自体はここで終わり、コードは修正しない。
 
-ルート結論が **「維持」または「調整」** で、ユーザーが実装フェーズへ進むと決めた場合、`code-review` スキル（Standards 準拠と Spec 準拠の2軸レビュー）へ引き継ぐ。目的が違うので有効に繋がる ── こちらは「このルートで良いか」を判断し、`code-review` は「そのルート上のコードが規約と仕様に忠実か」を行レベルで詰める。
+ルート結論が **「維持」または「調整」** で、ユーザーが実装フェーズへ進むと決めた場合、`code-review-mp` スキル（Standards 準拠と Spec 準拠の2軸レビュー）へ引き継ぐ。目的が違うので有効に繋がる ── こちらは「このルートで良いか」を判断し、`code-review-mp` は「そのルート上のコードが規約と仕様に忠実か」を行レベルで詰める。
 
 引き継ぐ前に次を渡す。
 
-- **比較の基準点（fixed point）**: 対象ブランチが分岐したコミット / ブランチ / タグ / merge-base。`code-review` はこの点と `HEAD` の diff をレビューする。
-- **Spec の出所**: 第2節で特定したプロジェクト目標・要件資料（issue / spec / ticket）。`code-review` が Spec 軸で参照する。
-- **第8節の実装レベル所見**: 既に見えている懸念点。`code-review` 側の重複調査を減らす。
+- **比較の基準点（fixed point）**: 対象ブランチが分岐したコミット / ブランチ / タグ / merge-base。`code-review-mp` はこの点と `HEAD` の diff をレビューする。
+- **Spec の出所**: 第2節で特定したプロジェクト目標・要件資料（issue / spec / ticket）。`code-review-mp` が Spec 軸で参照する。
+- **第8節の実装レベル所見**: 既に見えている懸念点。`code-review-mp` 側の重複調査を減らす。
 
-`code-review` が `docs/agents/issue-tracker.md` の不在で止まる場合はセットアップ未了。ユーザーに `/setup-matt-pocock-skills` を案内する。
+`code-review-mp` が `docs/agents/issue-tracker.md` の不在で止まる場合はセットアップ未了。ユーザーに `/setup-matt-pocock-skills` を案内する。
 
-ルート結論が **「変更」または「判断不能」** のときは `code-review` へ進まない。先に方案の決着、または不足情報の補完を行う。
+ルート結論が **「変更」または「判断不能」** のときは `code-review-mp` へ進まない。先に方案の決着、または不足情報の補完を行う。
