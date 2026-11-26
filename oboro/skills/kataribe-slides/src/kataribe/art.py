@@ -9,6 +9,7 @@ characters/*.json に合わせている。
 """
 
 import base64
+import contextlib
 import hashlib
 import html
 import http.cookiejar
@@ -17,6 +18,7 @@ import math
 import os
 import re
 import shutil
+import sys
 import tempfile
 import urllib.error
 import urllib.parse
@@ -42,9 +44,9 @@ def cache_root() -> Path:
 
 
 def sources_root() -> Path:
-    """自動で取得できない素材（定義に url がなく file がある）の zip を探す場所。"""
+    """素材の zip の置き場所。使う人が落とした zip をここで探し、自動で取得した zip もここに残す。"""
     configured = os.environ.get("KATARIBE_CHAR_SOURCES")
-    return Path(configured) if configured else Path.home() / "Downloads"
+    return Path(configured) if configured else Path.home() / "Documents" / "kataribe-assets"
 
 
 # ---------- 取得・検証 ----------
@@ -88,10 +90,7 @@ def _download(source: dict, dest: Path) -> None:
         # 配布元がログインやパスワードを求めるので、使う人が落とした zip を使う（MD5 は呼び出し元で確かめる）
         local = sources_root() / source["file"]
         if not local.is_file():
-            raise ArtError(
-                f"立ち絵素材を自動では取得できません。{source['page']} から「{source['file']}」を落として、"
-                f"{sources_root()} に置いてください（置き場所は KATARIBE_CHAR_SOURCES で変えられます）"
-            )
+            raise ArtError(f"立ち絵素材を自動では取得できません。{_how_to_get(source)}（置き場所は KATARIBE_CHAR_SOURCES で変えられます）")
         try:
             shutil.copyfile(local, dest)
         except OSError as e:
@@ -105,6 +104,56 @@ def _download(source: dict, dest: Path) -> None:
             _download_getuploader(url, source.get("password", ""), dest)
     except (OSError, urllib.error.URLError) as e:
         raise ArtError(f"立ち絵素材を取得できません: {url}（{e}）") from None
+
+
+def _how_to_get(source: dict) -> str:
+    return f"{source['page']} から「{source['file']}」を落として、{sources_root()} に置いてください"
+
+
+def _local_zip(source: dict) -> Path | None:
+    """素材の置き場所にある、定義の file の名前で MD5 が一致する zip。"""
+    if "file" not in source:
+        return None
+    path = sources_root() / source["file"]
+    try:
+        return path if path.is_file() and _md5(path) == source["md5"] else None
+    except OSError:
+        return None
+
+
+def _keep_in_sources(source: dict, archive: Path) -> None:
+    """自動で取得した zip を素材の置き場所にも残す。残せなくても、キャッシュがあるので build は止めない。"""
+    if "file" not in source:
+        return
+    dest = sources_root() / source["file"]
+    if dest.exists():  # MD5 が一致すれば取得していない。一致しないファイルは、使う人のものなので上書きしない
+        print(f"警告: {dest} は MD5 が定義と一致しないので、上書きせず残します", file=sys.stderr)
+        return
+    temporary = dest.with_name(f".{dest.name}.tmp")
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(archive, temporary)
+        os.replace(temporary, dest)
+    except OSError as e:
+        print(f"警告: 取得した立ち絵素材を {dest} に保存できません（{e}）", file=sys.stderr)
+        with contextlib.suppress(OSError):
+            temporary.unlink(missing_ok=True)
+
+
+def _obtain(definition: dict, work: Path) -> Path:
+    """MD5 の一致する zip を返す。素材の置き場所にあれば、自動で取得できる話者でもネットワークに接続しない。"""
+    source = definition["source"]
+    local = _local_zip(source)
+    if local is not None:
+        return local
+    archive = work / "source.zip"
+    _download(source, archive)
+    got = _md5(archive)
+    if got != source["md5"]:
+        raise ArtError(f"立ち絵素材の MD5 が一致しません（{definition['id']}）: {got}、期待は {source['md5']}")
+    if "url" in source:
+        _keep_in_sources(source, archive)
+    return archive
 
 
 def _member_name(info: zipfile.ZipInfo) -> str:
@@ -183,26 +232,37 @@ def _export_layers(psd_path: Path, scale: float, out: Path) -> list[dict]:
     return layers
 
 
+def _manifest_key(definition: dict) -> dict:
+    source = definition["source"]
+    return {"md5": source["md5"], "psd": source["psd"], "scale": definition["scale"]}
+
+
+def _cached_manifest(definition: dict) -> dict | None:
+    """キャッシュの manifest が定義と一致すれば返す。読めない・壊れている・定義と違うなら None。"""
+    try:
+        manifest = json.loads((cache_root() / definition["id"] / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(manifest, dict):
+        return None
+    key = _manifest_key(definition)
+    return manifest if {k: manifest.get(k) for k in key} == key else None
+
+
 def _prepare(definition: dict) -> tuple[Path, dict]:
     """キャッシュに、この定義の素材の書き出しがあることを保証する。途中で失敗したら、キャッシュを変えない。"""
     source = definition["source"]
-    key = {"md5": source["md5"], "psd": source["psd"], "scale": definition["scale"]}
+    key = _manifest_key(definition)
     directory = cache_root() / definition["id"]
-    manifest_path = directory / "manifest.json"
-    if manifest_path.exists():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if {k: manifest.get(k) for k in key} == key:
-            return directory, manifest
+    manifest = _cached_manifest(definition)
+    if manifest is not None:
+        return directory, manifest
     cache_root().mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix=f".{definition['id']}-", dir=cache_root()))
     try:
         archive = directory / "source.zip"
         if not (archive.exists() and _md5(archive) == source["md5"]):
-            archive = work / "source.zip"
-            _download(source, archive)
-            got = _md5(archive)
-            if got != source["md5"]:
-                raise ArtError(f"立ち絵素材の MD5 が一致しません（{definition['id']}）: {got}、期待は {source['md5']}")
+            archive = _obtain(definition, work)
         psd = work / "source.psd"
         _extract_psd(archive, source["psd"], psd)
         staged = work / "staged"
@@ -223,6 +283,54 @@ def _prepare(definition: dict) -> tuple[Path, dict]:
         raise ArtError(f"立ち絵素材のキャッシュに書き込めません: {e}") from None
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+# ---------- 素材の状態（assets） ----------
+
+ASSET_CACHED = "キャッシュ済み"
+ASSET_ZIP = "zip あり"
+ASSET_AUTO = "自動取得可"
+ASSET_MISSING = "素材なし"
+
+
+def asset_state(definition: dict) -> str:
+    """素材の状態を、優先順に判定する。読むだけで、ネットワーク接続・zip の展開・キャッシュへの書き込みをしない。"""
+    source = definition["source"]
+    if _cached_manifest(definition) is not None:
+        return ASSET_CACHED
+    if _local_zip(source) is not None:
+        return ASSET_ZIP
+    return ASSET_AUTO if "url" in source else ASSET_MISSING
+
+
+def _missing_guide(source: dict) -> str:
+    guide = _how_to_get(source)
+    if (sources_root() / source["file"]).exists():
+        guide += "（いま置いてある zip は MD5 が定義と一致しません）"
+    return guide
+
+
+def asset_report(definitions: dict[str, dict] | None = None) -> list[str]:
+    """話者ごとに1行で、素材の状態を返す。素材なしの行には、取得手順の警告を含める。"""
+    definitions = load_definitions() if definitions is None else definitions
+    lines = []
+    for speaker, definition in definitions.items():
+        state = asset_state(definition)
+        if state == ASSET_MISSING:
+            lines.append(f"{speaker}: {state}（警告: {_missing_guide(definition['source'])}）")
+        else:
+            lines.append(f"{speaker}: {state}")
+    return lines
+
+
+def asset_warnings(project: Project, definitions: dict[str, dict] | None = None) -> list[str]:
+    """台本で使う話者のうち、素材なしの話者についての警告（lint が出す）。"""
+    definitions = load_definitions() if definitions is None else definitions
+    return [
+        f"警告: 話者「{voice}」の立ち絵素材がありません（build は失敗します）。{_missing_guide(definitions[voice]['source'])}"
+        for voice in project.voices
+        if voice in definitions and asset_state(definitions[voice]) == ASSET_MISSING
+    ]
 
 
 # ---------- 表情 ----------

@@ -1,4 +1,5 @@
 import re
+from collections.abc import Iterable
 
 from kataribe.project import Project
 from kataribe.reading import replace_surfaces
@@ -25,10 +26,19 @@ def _unregistered_words(text: str, readings: dict[str, str]) -> list[str]:
     return list(dict.fromkeys(ENGLISH_WORD.findall(remaining)))
 
 
-def speed_warnings(timeline: dict) -> list[str]:
+def chars_per_second(text: str, seconds: float) -> float:
+    return len(text) / max(seconds, 0.1)
+
+
+def line_speed_warnings(lines: Iterable[tuple[str, str, float]]) -> list[str]:
+    """（行の ID, 表示文, 音声の長さ）の並びから、字幕の表示速度の警告を返す。"""
     warnings = []
-    for line in timeline["lines"]:
-        speed = len(line["text"]) / max(line["end"] - line["start"], 0.1)
+    for line_id, text, seconds in lines:
+        speed = chars_per_second(text, seconds)
         if speed > MAX_CHARS_PER_SECOND:
-            warnings.append(f"警告: {line['id']}: 字幕の表示速度が {speed:.1f} 字/秒です（{MAX_CHARS_PER_SECOND} 字/秒以内にしてください）")
+            warnings.append(f"警告: {line_id}: 字幕の表示速度が {speed:.1f} 字/秒です（{MAX_CHARS_PER_SECOND} 字/秒以内にしてください）")
     return warnings
+
+
+def speed_warnings(timeline: dict) -> list[str]:
+    return line_speed_warnings((line["id"], line["text"], line["end"] - line["start"]) for line in timeline["lines"])

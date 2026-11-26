@@ -8,6 +8,7 @@ import html
 
 from kataribe.browser import FREEZE_CSS, launch
 from kataribe.project import Project
+from kataribe.render import kit_css
 from kataribe.scenes import section_ids
 
 STAGE_W, STAGE_H = 1280, 720
@@ -22,11 +23,12 @@ html, body {{ margin: 0; background: transparent; color: var(--fg); font-family:
 #kataribe-stage [data-kataribe-state="hidden"] {{ visibility: hidden; }}
 #kataribe-stage [data-kataribe-focus-state="active"] {{ outline: 3px solid var(--fg); outline-offset: 3px; }}
 #kataribe-stage [data-kataribe-focus-state="dim"] {{ opacity: 0.35; }}
+%KIT%
 {freeze}
 </style></head><body><div id="kataribe-stage">
 {scenes}
 </div></body></html>
-"""
+""".replace("%KIT%", kit_css().replace("{", "{{").replace("}", "}}"))  # PAGE は format するので、部品の CSS の波括弧を二重にする
 
 # 行 at（シーンの中の番号）の見た目にする。規則は player.js と同じ。進行変数は、その行が終わった時点の値。
 APPLY = """([scene, at, count]) => {

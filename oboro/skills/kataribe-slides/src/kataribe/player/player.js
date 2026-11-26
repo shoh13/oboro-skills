@@ -6,6 +6,10 @@
   const playButton = document.getElementById("kataribe-play");
   const playLabel = playButton.querySelector(".kataribe-label");
   const captionsButton = document.getElementById("kataribe-captions-toggle");
+  const prevButton = document.getElementById("kataribe-prev");
+  const nextButton = document.getElementById("kataribe-next");
+  const rateSelect = document.getElementById("kataribe-rate");
+  const keyList = document.getElementById("kataribe-keys");
   const scenes = Array.from(document.querySelectorAll("#kataribe-stage section[data-scene]"));
   const chapterTitles = Object.fromEntries(timeline.chapters.map((c) => [c.id, c.title]));
   const chapterBar = document.getElementById("kataribe-chapter-bar");
@@ -75,79 +79,12 @@
     chapterBar.appendChild(item);
   }
 
-  // 立ち絵。1280x720 のステージで、高さ 530px、上端 390px（上半身を見せる）、中心は端から 150px（yes と同じ比率）。
-  // 縮小した画像の重ね合わせはブラウザの描画のタイミングで端の画素が揺れるので、ステージの実際の画素に合わせた
-  // canvas に自分で描く。同じ時刻なら毎回同じ画素になり、shoot と mp4 の撮影も揃う。
-  const CHAR_HEIGHT = 530 / 720, CHAR_TOP = 390 / 720, CHAR_CENTER = 150 / 1280;
+  // 立ち絵（figures.js）。
   const cast = JSON.parse(document.getElementById("kataribe-cast").textContent);
   const speakers = cast.map((entry) => entry.speaker);
-  const charactersEl = document.getElementById("kataribe-characters");
-  const characters = [];
-  for (const entry of cast) {
-    const boxes = Object.values(entry.layers);
-    const left = Math.min(...boxes.map((b) => b.x)), top = Math.min(...boxes.map((b) => b.y));
-    const bounds = { left, top, width: Math.max(...boxes.map((b) => b.x + b.w)) - left, height: Math.max(...boxes.map((b) => b.y + b.h)) - top };
-    const canvas = document.createElement("canvas");
-    canvas.className = "kataribe-character";
-    canvas.dataset.speaker = entry.speaker;
-    const images = {};
-    for (const [path, layer] of Object.entries(entry.layers)) {
-      const image = new Image();
-      image.src = layer.src;
-      images[path] = image;
-    }
-    charactersEl.appendChild(canvas);
-    characters.push({
-      entry,
-      canvas,
-      images,
-      bounds,
-      mirrored: KataribeCast.mirrored(entry.side, entry.facing),
-      seed: KataribeCast.seedOf(entry.speaker),
-      drawn: "",
-    });
-  }
+  const figures = KataribeFigures.create(document.getElementById("kataribe-characters"), cast);
+  const characters = figures.characters;
   let charactersReady = false;
-
-  function layoutCharacters() {
-    const stageWidth = charactersEl.clientWidth, stageHeight = charactersEl.clientHeight;
-    const ratio = window.devicePixelRatio || 1;
-    for (const c of characters) {
-      const height = Math.round(stageHeight * CHAR_HEIGHT);
-      const width = Math.round((height * c.bounds.width) / c.bounds.height);
-      const center = (c.entry.side === "left" ? CHAR_CENTER : 1 - CHAR_CENTER) * stageWidth;
-      Object.assign(c.canvas.style, {
-        left: `${Math.round(center - width / 2)}px`,
-        top: `${Math.round(stageHeight * CHAR_TOP)}px`,
-        width: `${width}px`,
-        height: `${height}px`,
-      });
-      c.canvas.width = Math.round(width * ratio);
-      c.canvas.height = Math.round(height * ratio);
-      c.drawn = "";
-    }
-  }
-
-  function drawCharacter(c, active) {
-    const key = `${active.join("\n")}|${c.canvas.width}x${c.canvas.height}`;
-    if (c.drawn === key) return;
-    c.drawn = key;
-    const ctx = c.canvas.getContext("2d");
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, c.canvas.width, c.canvas.height);
-    const sx = c.canvas.width / c.bounds.width, sy = c.canvas.height / c.bounds.height;
-    if (c.mirrored) ctx.setTransform(-sx, 0, 0, sy, c.canvas.width, 0);
-    else ctx.setTransform(sx, 0, 0, sy, 0, 0);
-    ctx.translate(-c.bounds.left, -c.bounds.top);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    for (const path of active) {
-      const layer = c.entry.layers[path];
-      ctx.globalCompositeOperation = layer.blend === "normal" ? "source-over" : layer.blend;
-      ctx.drawImage(c.images[path], layer.x, layer.y, layer.w, layer.h);
-    }
-    ctx.globalCompositeOperation = "source-over";
-  }
 
   function renderCharacters(index, now) {
     const faces = KataribeCast.facesAt(timeline.lines, index, speakers);
@@ -162,7 +99,7 @@
       c.canvas.dataset.mouth = String(mouth);
       c.canvas.dataset.blink = blinking ? "1" : "0";
       c.canvas.dataset.layers = JSON.stringify(active);
-      if (charactersReady) drawCharacter(c, active);
+      if (charactersReady) figures.draw(c, active);
     }
   }
 
@@ -189,8 +126,25 @@
     return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
   }
 
+  function totalSeconds() {
+    return Number.isFinite(audio.duration) ? audio.duration : timeline.lines[timeline.lines.length - 1].end;
+  }
+
+  function moveToChapter(offset) {
+    const now = audio.currentTime;
+    const chapter = timeline.lines[lineIndexAt(now)].chapter;
+    const index = timeline.chapters.findIndex((c) => c.id === chapter);
+    const start = KataribeKeys.chapterStart(timeline.chapters, index, now, offset);
+    if (start !== null) audio.currentTime = start;
+  }
+
+  function stepRate(offset) {
+    rateSelect.selectedIndex = Math.min(Math.max(rateSelect.selectedIndex + offset, 0), rateSelect.options.length - 1);
+    rateSelect.dispatchEvent(new Event("change"));
+  }
+
   function renderSeekBar() {
-    const total = Number.isFinite(audio.duration) ? audio.duration : timeline.lines[timeline.lines.length - 1].end;
+    const total = totalSeconds();
     seekBar.max = String(total);
     seekBar.value = String(audio.currentTime);
     seekCurrent.textContent = formatTime(audio.currentTime);
@@ -263,25 +217,85 @@
     if (audio.paused) audio.play();
     else audio.pause();
   });
-  document.getElementById("kataribe-prev").addEventListener("click", () => moveToLine(-1));
-  document.getElementById("kataribe-next").addEventListener("click", () => moveToLine(1));
+  prevButton.addEventListener("click", () => moveToLine(-1));
+  nextButton.addEventListener("click", () => moveToLine(1));
   seekBar.addEventListener("input", () => {
     audio.currentTime = Number(seekBar.value);
   });
+  // 字幕・文字起こし・速度は、ボタンと選択の処理を通して、aria の状態と defaultPlaybackRate を揃える
+  const seek = (seconds) => {
+    audio.currentTime = seconds;
+  };
+  const keyActions = {
+    play: () => playButton.click(),
+    back: () => seek(Math.max(audio.currentTime - 5, 0)),
+    forward: () => seek(Math.min(audio.currentTime + 5, totalSeconds())),
+    "prev-line": () => moveToLine(-1),
+    "next-line": () => moveToLine(1),
+    "prev-chapter": () => moveToChapter(-1),
+    "next-chapter": () => moveToChapter(1),
+    first: () => seek(0),
+    last: () => seek(timeline.lines[timeline.lines.length - 1].start),
+    percent: (key) => seek((totalSeconds() * Number(key)) / 10),
+    slower: () => stepRate(-1),
+    faster: () => stepRate(1),
+    captions: () => captionsButton.click(),
+    transcript: () => transcriptButton.click(),
+    keys: () => (keyList.open ? keyList.close() : keyList.showModal()),
+  };
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-    const target = event.target;
-    // 再生位置のバーでも、他のボタンと同じく矢印キーは行の移動にする（バー自身の刻みは細かすぎる）
-    if (target instanceof HTMLElement && target !== seekBar && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
-    event.preventDefault();
-    moveToLine(event.key === "ArrowRight" ? 1 : -1);
+    const binding = KataribeKeys.decide(event, keyList.open);
+    if (!binding) return;
+    event.preventDefault(); // 繰り返さない操作でも、押し続けた Space でページが流れないように既定の動作は止める
+    if (event.repeat && !binding.repeat) return;
+    keyActions[binding.action](event.key);
   });
-  const rateSelect = document.getElementById("kataribe-rate");
+  const keyTable = keyList.querySelector("dl");
+  for (const binding of KataribeKeys.BINDINGS) {
+    const keys = document.createElement("dt");
+    for (const name of KataribeKeys.keyNames(binding)) {
+      const kbd = document.createElement("kbd");
+      kbd.textContent = name;
+      keys.appendChild(kbd);
+    }
+    const label = document.createElement("dd");
+    label.textContent = binding.label;
+    keyTable.append(keys, label);
+  }
+  keyList.addEventListener("click", (event) => {
+    if (event.target === keyList) keyList.close(); // 枠の外（::backdrop）のクリックは dialog 自身に届く
+  });
+  const keysButton = document.getElementById("kataribe-keys-open");
+  keysButton.addEventListener("click", () => keyActions.keys());
+  const keyControls = [
+    [keysButton, "keys"],
+    [playButton, "play"],
+    [prevButton, "prev-line"],
+    [nextButton, "next-line"],
+    [captionsButton, "captions"],
+    [transcriptButton, "transcript"],
+    [rateSelect, "slower", "faster"],
+  ];
+  for (const [control, ...actions] of keyControls) control.setAttribute("aria-keyshortcuts", KataribeKeys.ariaShortcuts(actions));
   rateSelect.addEventListener("change", () => {
     // defaultPlaybackRate も揃えて、音声の読み込み直しがあっても速度を保つ
     audio.defaultPlaybackRate = audio.playbackRate = Number(rateSelect.value);
   });
+  // マウスやタッチで操作した部品は、操作のあとフォーカスを外す。残すと、Space などのキーがその部品に吸われてキー操作が効かない。
+  // キーボードで操作したときは、Tab の位置を保つためにフォーカスを残す
+  let pointerControl = null;
+  const controlOf = (target) => (target instanceof Element ? target.closest("button, select, input") : null);
+  document.addEventListener("pointerdown", (event) => (pointerControl = controlOf(event.target)), true);
+  document.addEventListener("keydown", () => (pointerControl = null), true);
+  document.addEventListener("click", (event) => {
+    const control = controlOf(event.target);
+    if (control instanceof HTMLButtonElement && event.detail > 0) control.blur();
+  });
+  for (const control of [seekBar, rateSelect]) {
+    control.addEventListener("change", () => {
+      if (pointerControl === control) control.blur();
+    });
+  }
   transcriptButton.addEventListener("click", () => {
     const open = transcript.hidden;
     transcript.hidden = !open;
@@ -306,16 +320,15 @@
   }
   for (const type of ["timeupdate", "seeked", "loadedmetadata", "durationchange"]) audio.addEventListener(type, render);
   render();
-  const allImages = characters.flatMap((c) => Object.values(c.images));
-  Promise.all(allImages.map((image) => image.decode().catch(() => {}))).then(() => {
+  figures.ready.then(() => {
     charactersReady = true;
-    layoutCharacters();
+    figures.layout();
     render();
     document.documentElement.dataset.kataribeCast = "ready"; // shoot と mp4 は、これを待ってから撮る
   });
   window.addEventListener("resize", () => {
     if (!charactersReady) return;
-    layoutCharacters();
+    figures.layout();
     render();
   });
 })();

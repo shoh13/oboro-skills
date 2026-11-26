@@ -99,7 +99,22 @@ def check_counts(chapters: int, transcript: int, expected_chapters: int, expecte
     return _check(4, problems)
 
 
-def check_appearance(samples: list[dict], timeline: dict, elements: dict[str, list[tuple[float, float]]]) -> Check:
+Interval = tuple[float, float]
+
+
+def expected_visibility(position: int, own: Interval, ancestors: list[Interval]) -> str:
+    """要素自身の区間と、data-at・data-out を持つ祖先（section の中）のすべての区間に入る行でだけ見える。
+    祖先が消えている間は、visibility の継承で、子も消える。"""
+    shown = all(at <= position < out for at, out in [own, *ancestors])
+    return "visible" if shown else "hidden"
+
+
+def check_appearance(
+    samples: list[dict],
+    timeline: dict,
+    elements: dict[str, list[Interval]],
+    ancestors: dict[str, list[list[Interval]]] | None = None,
+) -> Check:
     problems: list[str] = []
     warnings: list[str] = []
     index_in_scene: dict[str, int] = {}
@@ -120,8 +135,10 @@ def check_appearance(samples: list[dict], timeline: dict, elements: dict[str, li
             warnings.append(f"行 {line['id']} は、検証できるサンプルがなく、検証できませんでした")
             continue
         position = index_in_scene[line["id"]]
-        for number, (at, out) in enumerate(scene_elements):
-            expected = "visible" if at <= position < out else "hidden"
+        scene_ancestors = (ancestors or {}).get(line["scene"], [])
+        for number, own in enumerate(scene_elements):
+            chain = scene_ancestors[number] if number < len(scene_ancestors) else []
+            expected = expected_visibility(position, own, chain)
             wrong = [item for item in inside if item["vis"][number] != expected]
             if wrong:
                 problems.append(
@@ -225,7 +242,7 @@ SAMPLER = """() => {
             caption: caption.textContent,
             scene: active ? active.dataset.scene : null,
             progress,
-            vis: active ? Array.from(active.querySelectorAll('[data-at],[data-out]')).map(e => getComputedStyle(e).visibility) : [],
+            vis: active ? Array.from(active.querySelectorAll('[data-at],[data-out]')).filter(e => e instanceof HTMLElement).map(e => getComputedStyle(e).visibility) : [],
             cast: Array.from(stage.querySelectorAll('.kataribe-character')).map(el => [el.dataset.speaker, el.dataset.face, el.dataset.mouth]),
         });
     };
@@ -240,13 +257,35 @@ SAMPLER = """() => {
 ELEMENTS = """() => Object.fromEntries(
     Array.from(document.querySelectorAll('#kataribe-stage section[data-scene]')).map(s => [
         s.dataset.scene,
-        Array.from(s.querySelectorAll('[data-at],[data-out]')).map(e => [e.getAttribute('data-at'), e.getAttribute('data-out')]),
+        Array.from(s.querySelectorAll('[data-at],[data-out]')).filter(e => e instanceof HTMLElement).map(e => [e.getAttribute('data-at'), e.getAttribute('data-out')]),
+    ])
+)"""
+
+# ELEMENTS と同じ順の要素ごとに、data-at・data-out を持つ祖先（section 自身は含めない）の [data-at, data-out]。
+# プレーヤーは HTMLElement だけを出し入れする（SVG の <g data-at> は常に見える）ので、祖先も HTMLElement に限る
+ANCESTORS = """() => Object.fromEntries(
+    Array.from(document.querySelectorAll('#kataribe-stage section[data-scene]')).map(s => [
+        s.dataset.scene,
+        Array.from(s.querySelectorAll('[data-at],[data-out]')).filter(e => e instanceof HTMLElement).map(e => {
+            const chain = [];
+            for (let node = e.parentElement; node && node !== s; node = node.parentElement) {
+                if (node instanceof HTMLElement && (node.hasAttribute('data-at') || node.hasAttribute('data-out'))) {
+                    chain.push([node.getAttribute('data-at'), node.getAttribute('data-out')]);
+                }
+            }
+            return chain;
+        }),
     ])
 )"""
 
 
 def _number(value: str | None, default: float) -> float:
     return default if value is None else float(int(value.strip()))
+
+
+def intervals(pairs: list) -> list[Interval]:
+    """[data-at, data-out] の値（属性がなければ None）の並び → 表示する行の区間 [at, out) の並び。"""
+    return [(_number(at, 0), _number(out, float("inf"))) for at, out in pairs]
 
 
 def verify(root: Path, end_margin: float = END_MARGIN, out: Path | None = None) -> VerifyResult:
@@ -265,9 +304,15 @@ def verify(root: Path, end_margin: float = END_MARGIN, out: Path | None = None) 
             require_aac(page)
             page.wait_for_function("document.getElementById('kataribe-audio').readyState >= 1")
             timeline = page.evaluate("JSON.parse(document.getElementById('kataribe-timeline').textContent)")
+            # 台本にないシーンの section の属性は lint が検査しないので、整数でないことがある。読まない
+            in_script = {scene["id"] for scene in timeline["scenes"]}
             elements = {
-                scene_id: [(_number(at, 0), _number(out, float("inf"))) for at, out in pairs]
-                for scene_id, pairs in page.evaluate(ELEMENTS).items()
+                scene_id: intervals(pairs) for scene_id, pairs in page.evaluate(ELEMENTS).items() if scene_id in in_script
+            }
+            ancestors = {
+                scene_id: [intervals(chain) for chain in chains]
+                for scene_id, chains in page.evaluate(ANCESTORS).items()
+                if scene_id in in_script
             }
             chapter_count = page.locator("#kataribe-chapter-bar > [data-chapter-id]").count()
             transcript_count = page.locator("#kataribe-transcript > [data-line-id]").count()
@@ -285,7 +330,7 @@ def verify(root: Path, end_margin: float = END_MARGIN, out: Path | None = None) 
             samples = page.evaluate("window.__kataribeSamples")
         finally:
             browser.close()
-    appearance = check_appearance(samples, timeline, elements)
+    appearance = check_appearance(samples, timeline, elements, ancestors)
     checks = [
         check_played(ended, current, waited),
         check_scenes(samples, timeline),

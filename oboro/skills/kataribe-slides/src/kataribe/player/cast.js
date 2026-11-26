@@ -3,10 +3,11 @@ window.KataribeCast = (() => {
   const DEFAULT_FACE = "normal";
 
   // 行 index の時点の、話者ごとの表情。話している人はその行の表情（省略なら既定）、
-  // 話していない人は最後に話した行の表情（まだ話していなければ既定）。
+  // 話していない人は最後に話した行の表情（まだ話していなければ既定）。speaker のない行（地の文）は飛ばす。
   function facesAt(lines, index, speakers) {
     const faces = Object.fromEntries(speakers.map((speaker) => [speaker, DEFAULT_FACE]));
     for (let i = 0; i <= index && i < lines.length; i++) {
+      if (lines[i].speaker == null) continue; // 地の文（スライド）
       faces[lines[i].speaker] = lines[i].expression ?? DEFAULT_FACE;
     }
     return faces;
