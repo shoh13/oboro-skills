@@ -69,7 +69,7 @@ uv run --project <プラグインのルート> kataribe assets
 }
 ```
 
-- 各行の `speaker`（必須）は話者で、`ずんだもん`、`四国めたん`、`春日部つむぎ`、`雨晴はう`、`あんこもん` のどれか。1本で使える話者は2人まで（3人目が出た行で lint と build が失敗する）。使える話者は、声（`src/kataribe/voices.py`）と立ち絵の定義の両方がある話者。その行は、その声で合成する。冒頭に `voice` は書かない（書くと、`speaker` のない行がエラーになる）。`speaker` のない地の文は、スライド（`kataribe:slides`）でだけ使える。
+- 各行の `speaker`（必須）は話者で、`ずんだもん`、`四国めたん`、`春日部つむぎ`、`雨晴はう`、`あんこもん` のどれか。1本で使える話者は2人まで（3人目が出た行で lint と build が失敗する）。使える話者は、声（`src/kataribe/voices.py`）と立ち絵の定義の両方がある話者。その行は、その声で合成する。冒頭に `voice` は書かない（書くと、`speaker` のない行がエラーになる）。`speaker` のない地の文は、スライド（`oboro:kataribe-slides`）でだけ使える。
 - 各行の `expression`（任意）は表情。省略すると `normal`。使える表情と立ち絵の表示は「立ち絵の素材」を見る。
 
 `scenes.html` の `<section data-scene="s1">` が、台本の `scenes[].id` に対応する。
