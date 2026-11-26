@@ -1,12 +1,12 @@
 ---
 name: org-file-conventions
-description: "~/dev/org配下のorg-modeファイル（roamノート含む）作成・追記時の書式ガイド。装飾記号の前後スペース、コードブロックのresults指定、frontmatterの生成元（config.org）、id:リンクによるバックリンクなど、踏みがちな罠をまとめる。"
+description: "~/repo/05_org配下のorg-modeファイル（roamノート含む）作成・追記時の書式ガイド。装飾記号の前後スペース、コードブロックのresults指定、frontmatterの生成元（config.org）、id:リンクによるバックリンクなど、踏みがちな罠をまとめる。"
 user-invocable: false
 ---
 
 # org ファイルの書き方
 
-このユーザーの `~/dev/org/` は org-roam で管理されているノート群。書式の詳細な解説・使い方リファレンスは`~/dev/org/roam/20260630-org-howto-memo.org` にまとまっているので、ここに載っていない操作（キャプチャ、アジェンダ、リファイル等）で迷ったらそのファイルを読むこと。ここでは新規作成・追記のたびに踏みがちな罠だけを要点としてまとめる。
+このユーザーの `~/repo/05_org/` は org-roam で管理されているノート群。ここでは新規作成・追記のたびに踏みがちな罠を要点としてまとめる。
 
 ## 1. テキスト装飾は前後にスペースが要る
 
@@ -51,13 +51,13 @@ gh issue list --repo $repo --state all
 #+PROPERTY: header-args:shell :var repo="d-o-n-u-t-s/jbc_id"
 ```
 
-## 4. 新規ファイルの frontmatter は `~/repo/nix/home-manager/doom.d/config.org` が SSoT
+## 4. 新規ファイルの frontmatter は `~/dotfiles/home-manager/doom.d/config.org` が SSoT
 
-新規 .org ファイルの frontmatter（`:ID:` / `#+TITLE:` / `#+OPTIONS:` / `#+DATE:` / `#+LANGUAGE:` / `#+FILETAGS:` の型）は、このユーザーが実際に手で打たず org-capture / org-roam-capture 経由で自動生成しているため、その生成元である `~/repo/nix/home-manager/doom.d/config.org` の「Org-mode」セクションが唯一の正となる。ここに書き写したコピーではなく、必ず作業のたびにそのファイルを読んで現在のテンプレートを確認すること（[config.org](http://config.org) 側が更新されればテンプレートも変わるため、このファイルに固定のひな形を書いてしまうと乖離する）。
+新規 .org ファイルの frontmatter（`:ID:` / `#+TITLE:` / `#+OPTIONS:` / `#+DATE:` / `#+LANGUAGE:` / `#+FILETAGS:` の型）は、このユーザーが実際に手で打たず org-capture / org-roam-capture 経由で自動生成しているため、その生成元である `~/dotfiles/home-manager/doom.d/config.org` の「Org-mode」セクションが唯一の正となる。ここに書き写したコピーではなく、必ず作業のたびにそのファイルを読んで現在のテンプレートを確認すること（[config.org](http://config.org) 側が更新されればテンプレートも変わるため、このファイルに固定のひな形を書いてしまうと乖離する）。
 
 読むべき箇所は2つ:
 
-- `org-capture-templates` の `"m" "Work memo"`（`~/dev/org/roam/` 直下に手動でタイトルを入力して作る場合）
+- `org-capture-templates` の `"m" "Work memo"`（`~/repo/05_org/roam/` 直下に手動でタイトルを入力して作る場合）
 - `org-roam-capture-templates` の `"d" "default"`（org-roam-node-find などノード検索経由で作る場合）
 
 どちらもテンプレート文字列は Emacs Lisp の式が混ざっているので、この環境（Emacs の外）で新規ファイルを作るときは以下のように読み替える:
