@@ -168,8 +168,10 @@ def test_キャッシュの既定の場所は_リポジトリの外のユーザ�
     assert REPO not in cache_root().parents
 
 
-def test_素材と画像はgitで追跡されず_定義はJSONだけ():
-    tracked = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True).stdout.split()
+@pytest.mark.parametrize("skill", ["kataribe", "kataribe-slides"])
+def test_素材と画像はgitで追跡されず_定義はJSONだけ(skill):
+    # 動画とスライドは同じ実行コードを別々に同梱するので、両方のディレクトリを確かめる。
+    tracked = subprocess.run(["git", "ls-files"], cwd=REPO.parent / skill, capture_output=True, text=True, check=True).stdout.split()
 
     assert not [f for f in tracked if f.endswith((".psd", ".zip"))]
     assert sorted(f for f in tracked if f.startswith("src/kataribe/characters/")) == [

@@ -1,9 +1,9 @@
 """player/cast.js の純粋な関数を、ブラウザで直接呼んで検査する（build も再生もしない）。"""
-from pathlib import Path
+from importlib import resources
 
 import pytest
 
-CAST_JS = (Path(__file__).resolve().parents[1] / "src" / "kataribe" / "player" / "cast.js").read_text(encoding="utf-8")
+CAST_JS = (resources.files("kataribe") / "player" / "cast.js").read_text(encoding="utf-8")
 SPEAKERS = ["四国めたん", "ずんだもん"]
 LINES = [
     {"speaker": "四国めたん", "expression": None},

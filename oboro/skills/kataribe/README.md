@@ -193,10 +193,15 @@ uv run kataribe assets
 
 ## 開発
 
+動画（`oboro/skills/kataribe`）とスライド（`oboro/skills/kataribe-slides`）は、同じ実行コード（`src/kataribe`、`pyproject.toml`、`uv.lock`）を別々に同梱しています。テストは `oboro/skills/kataribe/tests/` にだけあり、どちらのディレクトリで実行しても、そのディレクトリの `src/kataribe` を検査します。実行コードを直したら、両方のディレクトリを同じにして、両方で実行します。
+
 ```sh
+cd oboro/skills/kataribe        # スライドは oboro/skills/kataribe-slides
 uv run pytest                      # 全部
 uv run pytest -m "not integration" # Docker の VOICEVOX を使うテストを飛ばす
 ```
+
+`tests/test_skill_copies.py` は、2つのディレクトリの実行コードが1バイトでも違うと失敗します。`tests/test_art.py` は、どちらのディレクトリにも立ち絵の素材（`.psd`・`.zip`）や余分な定義が git で追跡されていないことを確かめます。GitHub Actions の `.github/workflows/kataribe.yml` は、どちらかのディレクトリを変える PR と main への push のたびに、両方のディレクトリで `uv run pytest -m "not integration"` を実行します。
 
 `integration` マーカーのテストは、実際の VOICEVOX（Docker）を使います。Docker が使えないときは自動で飛ばされます。立ち絵は、テストではネットワークから取得せず、テスト用の小さな素材（`tests/fake_art.py`）を使います。
 

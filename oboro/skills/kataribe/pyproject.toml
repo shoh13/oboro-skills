@@ -25,10 +25,10 @@ build-backend = "hatchling.build"
 packages = ["src/kataribe"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["tests"]
+testpaths = ["../kataribe/tests"]
+pythonpath = ["../kataribe/tests"]
 markers = ["integration: 実際の VOICEVOX（Docker）を使うテスト。Docker が使えるときだけ実行する"]
 
 [tool.pyright]
-extraPaths = ["tests"]
-include = ["src", "tests"]
+extraPaths = ["../kataribe/tests"]
+include = ["src", "../kataribe/tests"]

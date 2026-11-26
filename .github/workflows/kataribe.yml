@@ -1,0 +1,46 @@
+name: kataribe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "oboro/skills/kataribe/**"
+      - "oboro/skills/kataribe-slides/**"
+      - ".github/workflows/kataribe.yml"
+  pull_request:
+    paths:
+      - "oboro/skills/kataribe/**"
+      - "oboro/skills/kataribe-slides/**"
+      - ".github/workflows/kataribe.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kataribe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    # 動画とスライドは同じ実行コードを別々に同梱する。共通のテスト（oboro/skills/kataribe/tests）を、それぞれの venv で実行する。
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: [kataribe, kataribe-slides]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: oboro/skills/${{ matrix.skill }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: oboro/skills/${{ matrix.skill }}/uv.lock
+      - run: uv sync --locked
+      # プレーヤーのテストには AAC を再生できる Chrome が要る。ランナーに入っているものを使う。
+      - run: google-chrome --version
+      # 実際の VOICEVOX を使う統合テストは、イメージの取得に時間がかかるので CI では動かさない。
+      - run: uv run pytest -q -m "not integration"
