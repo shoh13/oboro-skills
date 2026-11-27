@@ -4,9 +4,7 @@ description: "AIミーティングノートの文字起こしとメモを分析�
 disable-model-invocation: true
 ---
 
-<callout icon="💻" color="blue_bg">
 文字起こしとユーザーメモを保持したまま、技術議論を決定・未決・前提知識まで追える要約へ変換する。
-</callout>
 
 ## 完了条件
 
@@ -77,8 +75,6 @@ disable-model-invocation: true
 
 ## 検証
 
-- 本文の直接依存とRelationが`artifact-destination`、`discussion-synthesis`で一致する。
-- 両依存はモデル起動で、循環依存がない。
 - `discussion-synthesis`へ渡す前にソースが取得・正規化され、返却後にだけsummary形式へ整形される。
 - 各決定、事実、アクションにtranscriptまたはnotes上のソースポインタがある。
 - notesと文字起こしの不一致が隠されず、未決事項が決定事項へ混ざっていない。

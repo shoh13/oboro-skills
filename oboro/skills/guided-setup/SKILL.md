@@ -4,9 +4,7 @@ description: "親から渡された外部サービス・CLI・認証のセット
 user-invocable: false
 ---
 
-<callout icon="🪄" color="purple_bg">
 外部サービス、CLI、認証の不足を、現在状態から1アクションずつ安全に解消し、検証済みの設定状況だけを親へ返す。
-</callout>
 
 ## 完了条件
 
@@ -100,17 +98,3 @@ user-invocable: false
 - packet提供時にallowlist、`source_scope_hash`、Target identity、freshness、必要claims、source pointersを検査していることを確認する。
 - packet使用時の`evidence-research`再起動が0、保存先再解決が0、秘密値が0であることを確認する。
 - 子起動失敗時に後続0、親代行0、再開地点ありでfail-fastすることを確認する。
-
-## 検証履歴
-
-<date start="2026-09-20" /> の作成時点では静的検査だけを完了し、実動検証は未実施だった。その後、Phase 13で次を検証した。
-
-- [x] Relationと本文の呼び出し先が`evidence-research`で一致する。
-- [x] verified evidence packet提供時はallowlist、hash、Target identity、freshness、必要claims、pointersを検査する。
-- [x] packet合格時の二重調査0、保存先再解決0、秘密値0を維持する。
-- [x] packet不一致では自己調査・設定・後続0でfail-fastする。
-- [x] 最小権限、非破壊検証、再開地点、取消方法を返す。
-
-- 現行証拠：[Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb)
-
-Phase 13の正常系・境界系・fail-fast検証に合格し、ライフサイクルは`安定版`である。

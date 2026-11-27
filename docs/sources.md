@@ -64,3 +64,13 @@ Notion v2 の `original` パック（version `7a0adaf9b6aa`）から取り込み
 - **本文。** `tools/repair-notion-body.py` で戻しました。戻した主な箇所は `--follow`、`--url`、`--items`、`--arrows`、`--ids`、`--tab`、コードブロックの言語名 `text`、`[検討中]` です。
 - **手で直した 1 か所（推測）。** 太字の見出し語の例 `` `*名前.** 本文` `` は、`` `**名前**. 本文` `` に直しました。`scripts/extract-md.mjs` の正規表現が `**名前**` の直後に `.` が続く形を受け付けるので、それに合わせています。
 - **欠けているファイル。** `tests/run.mjs` が読む `tests/fixture-dom.js` は、v2 のパックに入っていません（11-19 と 11-20 のどちらのパックにもない）。テストは build の検査 7 件が通った後、このファイルを読むところで止まります。Notion が `.js` の添付を受け付けなかった可能性があります（推測。`.mjs` と `.cjs` は入っている）。
+
+## SKILL.md から外した Notion の記録（2026-11-28）
+
+Notion の描画で残った記法と、Notion の `[DB]スキル v2` を前提にした記述を、各 SKILL.md から外しました。規則は変えていません。
+
+- **記法。** 冒頭の `<callout>` の囲み（中の文は残した）、`\*\*`、`[AGENTS.md](http://AGENTS.md)` のような自動リンク、`<date start=… />`、`<b>`、evidence-research の手順 3〜10 を 1 行につないでいた `<br />`、notion-slide-layout の番号の振り直しを直しました。doc-state-machine の本文の頭に残っていた 2 つ目の frontmatter（`notion_page_id` つき）を外し、`f docx` を `-f docx` に戻しました。
+- **Relation の検査。** 「本文の呼び出しと Relation が一致する」「起動主体はモデル起動である」は、v2 の DB のプロパティを確かめる項目で、このリポジトリには対応するものがないので外しました（9 件）。
+- **検証の履歴。** evidence-research と guided-setup の「検証履歴」の節を外しました。どちらの証拠も Notion の [Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb) にあります。workflow-router の Phase 12・13 のリンクは残しています。
+- **例のリポジトリ名。** org-file-conventions の `:var` の例のリポジトリ名を `owner/repo` にしました。
+- **戻せなかった 1 か所。** org-file-conventions の表の `%(org-id-new)` の行は、Notion が表の中の `|` を壊していて、`uuidgen` に続く元のコマンドが分かりません。崩れていない元が見つからないので、そのままにしています。

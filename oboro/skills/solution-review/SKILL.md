@@ -21,7 +21,7 @@ disable-model-invocation: true
 
 優先して見るもの:
 
-- README、[AGENTS.md](http://AGENTS.md)、[CLAUDE.md](http://CLAUDE.md) などのプロジェクト説明
+- README、`AGENTS.md`、`CLAUDE.md` などのプロジェクト説明
 - docs / spec / requirements / issue / ticket などの要件・設計資料
 - 現在のブランチの git diff と関連する直近コミット
 - 依存関係、ビルド設定、環境設定、デプロイ設定

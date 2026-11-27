@@ -4,9 +4,7 @@ description: "親ワークフローから渡された正規化済みの会話・
 user-invocable: false
 ---
 
-<callout icon="🧩" color="purple_bg">
 正規化済みテキストを、原文へ追跡可能な構造化結果へ変換して親へ返す。取得・保存・意思決定・次工程開始は行わない。
-</callout>
 
 ## 入力Contract
 
@@ -99,7 +97,6 @@ user-invocable: false
 
 ## 検証
 
-- 起動主体がモデル起動で、外向きRelationが空である。
 - 正規化済みテキストだけで処理し、ソース取得を試みていない。
 - 8つの出力項目と状態がContractどおりである。
 - Evidence-backed facts、Decisions、Open questions、Actions、Termsの全件に`item_id`と1つ以上の解決可能な`source_pointer[]`がある。
@@ -111,7 +108,6 @@ user-invocable: false
 - 入力に明示されていないActionまたはOpen questionが0件である。
 - 推測と未確認事項が事実から分離されている。
 - 保存先解決、書き込み、意思決定、次工程開始の副作用がない。
-- 実動検証は公開ベータ移行時には行わず、静的検査だけを実施する。
 
 ### 静的例
 

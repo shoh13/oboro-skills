@@ -4,9 +4,7 @@ description: "Notionページに貼り付けられたSlack会話テキストを�
 disable-model-invocation: true
 ---
 
-<callout icon="💬" color="purple_bg">
 貼り付けられたSlack会話の原文を保持し、決定・未決・推測を混同しない学習可能な要約へ整える。
-</callout>
 
 ## 完了条件
 
@@ -77,8 +75,6 @@ disable-model-invocation: true
 
 ## 検証
 
-- 本文の直接依存とRelationが`artifact-destination`、`discussion-synthesis`で一致する。
-- 両依存はモデル起動で、循環依存がない。
 - `discussion-synthesis`へ渡す前に原文が取得・正規化され、返却後にだけページ形式へ整形される。
 - 各決定、事実、アクションに原文上のソースポインタがある。
 - 未決事項が決定事項へ混ざらず、推測が明示されている。

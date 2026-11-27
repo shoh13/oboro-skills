@@ -4,9 +4,7 @@ description: "入力写真を、上半分に原写真、下半分に被写体を
 disable-model-invocation: true
 ---
 
-<callout icon="🖼️" color="purple_bg">
 写真1枚につき1枚、原写真の魅力と抽象グラフィックを上下1:1で組み合わせた静かなポスターを作る。
-</callout>
 
 ## 共通実行コンテキスト
 

@@ -4,9 +4,7 @@ description: "覆しにくく、文脈がないと意外で、真のトレード
 user-invocable: false
 ---
 
-<callout icon="🏛️" color="purple_bg">
 重要な設計判断の内容を統一形式のADRとして作成・更新する。保存先の判断は必要な場合だけ委譲し、ADR以外の成果物は扱わない。
-</callout>
 
 ## 入力Contract
 
@@ -43,7 +41,7 @@ user-invocable: false
 - Titleは意思決定を表す文にする。
 - Statusは該当する1項目だけを有効にする。
 - 1つのRepoのコードに関する設計判断は、そのRepoの`docs/adr/`にファイルとして置く。
-- それ以外の設計判断は、NotionのKnowledge（種類decision）に新しい行として書く。書き方と置き換えの記録方法は、エントリページ[エージェント運用ガイド](https://app.notion.com/p/421ed7564258812c8b4dfc3c0cf8d363)に従う。
+- それ以外の設計判断の保存先は、`artifact-destination`の環境既定に従う（ユーザーの指示ファイルが参照するルールのページに保存先の規則があれば、それが正本）。書き方と置き換えの記録方法も、その正本に従う。
 - Decision、Context、Considerationを特に明確にする。
 - 判断に不可欠な情報はリンクだけに依存せず本文にも残す。
 
@@ -68,8 +66,6 @@ user-invocable: false
 
 ## 検証
 
-- 起動主体はモデル起動である。
-- 本文の直接呼び出しは`artifact-destination`だけで、Relationと一致する。
 - 正常系では保存先を再解決しない。
 - 不足時だけ`artifact-destination`を呼ぶ。
 - 競合時は書き込みを停止して親へ返す。

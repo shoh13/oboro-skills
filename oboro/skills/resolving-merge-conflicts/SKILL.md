@@ -4,9 +4,7 @@ description: "進行中のGit mergeまたはrebaseで発生した競合を、各
 user-invocable: false
 ---
 
-<callout icon="🔀" color="orange_bg">
 競合箇所だけでなく、両側の変更が必要になった理由を確認し、意図を壊さずにmergeまたはrebaseを完了させる。
-</callout>
 
 ## 入力Contract
 
@@ -85,4 +83,4 @@ user-invocable: false
 - 各競合について、両側の意図と最終結果の対応を説明できることを確認する。
 - プロジェクト既定の検査が成功していることを確認する。
 - mergeまたはrebaseの進行状態が終了していることを確認する。
-- 本文の直接呼び出しが`artifact-destination`だけでRelationと一致し、通常マージや次のユーザー起動Skillを自動開始しないことを確認する。
+- 通常マージや次のユーザー起動Skillを自動開始しないことを確認する。

@@ -14,7 +14,7 @@ user-invocable: false
 
 `~コード~` はメソッド名、コマンド、識別子などコードの記法で、`=逐語=` はファイルパス、コミットハッシュ、書き写した文字列などの記法。どちらも等幅表示になるが、テーマによって色が変わる。
 
-```javascript
+```org
 NG: 本文*太字*本文
 OK: 本文 *太字* 本文
 ```
@@ -25,7 +25,7 @@ OK: 本文 *太字* 本文
 
 `#+begin_src lang :results output` は追加オプション不要で、実行結果は同じ org ファイル内の `#+RESULTS:` に書き込まれる。「結果をファイルに出力したい」という依頼だった場合、まず今の動作（org ファイル自体への書き込み）で十分かをユーザーに確認する。本当に別ファイルへ書き出したい場合だけ `:file` ヘッダー引数を足す。
 
-```javascript
+```org
 #+begin_src shell :results output :file output.txt
 echo hello
 #+end_src
@@ -39,21 +39,21 @@ echo hello
 
 ブロック単位:
 
-```javascript
-#+begin_src shell :var repo="d-o-n-u-t-s/jbc_id"
+```org
+#+begin_src shell :var repo="owner/repo"
 gh issue list --repo $repo --state all
 #+end_src
 ```
 
 ファイル全体で使い回すなら、ファイル冒頭に共通プロパティを1回書けば以降の同言語ブロック全部に効く（個別ブロックだけ別の値にしたい場合はそのブロックにだけ `:var` を書けば上書きできる）:
 
-```javascript
-#+PROPERTY: header-args:shell :var repo="d-o-n-u-t-s/jbc_id"
+```org
+#+PROPERTY: header-args:shell :var repo="owner/repo"
 ```
 
 ## 4. 新規ファイルの frontmatter は `~/dotfiles/home-manager/doom.d/config.org` が SSoT
 
-新規 .org ファイルの frontmatter（`:ID:` / `#+TITLE:` / `#+OPTIONS:` / `#+DATE:` / `#+LANGUAGE:` / `#+FILETAGS:` の型）は、このユーザーが実際に手で打たず org-capture / org-roam-capture 経由で自動生成しているため、その生成元である `~/dotfiles/home-manager/doom.d/config.org` の「Org-mode」セクションが唯一の正となる。ここに書き写したコピーではなく、必ず作業のたびにそのファイルを読んで現在のテンプレートを確認すること（[config.org](http://config.org) 側が更新されればテンプレートも変わるため、このファイルに固定のひな形を書いてしまうと乖離する）。
+新規 .org ファイルの frontmatter（`:ID:` / `#+TITLE:` / `#+OPTIONS:` / `#+DATE:` / `#+LANGUAGE:` / `#+FILETAGS:` の型）は、このユーザーが実際に手で打たず org-capture / org-roam-capture 経由で自動生成しているため、その生成元である `~/dotfiles/home-manager/doom.d/config.org` の「Org-mode」セクションが唯一の正となる。ここに書き写したコピーではなく、必ず作業のたびにそのファイルを読んで現在のテンプレートを確認すること（`config.org` 側が更新されればテンプレートも変わるため、このファイルに固定のひな形を書いてしまうと乖離する）。
 
 読むべき箇所は2つ:
 
@@ -68,13 +68,13 @@ gh issue list --repo $repo --state all
 | `%<%Y-%m-%d>` | 今日の日付 | `date +%Y-%m-%d` |
 | `%(org-capture-get :my-title)` / `${title}` | ユーザーが入力したタイトル | ユーザーに確認したタイトル文字列 |
 
-`#+FILETAGS:` の区切り方（スペース区切りかコロン区切りか）や `#+OPTIONS:` の具体的な値も [config.org](http://config.org) のテンプレート文字列にある通りに従う。テンプレート自体を変更したい・新しい frontmatter の項目を足したいという話が出たら、このファイルではなく [config.org](http://config.org) 側を編集する。
+`#+FILETAGS:` の区切り方（スペース区切りかコロン区切りか）や `#+OPTIONS:` の具体的な値も `config.org` のテンプレート文字列にある通りに従う。テンプレート自体を変更したい・新しい frontmatter の項目を足したいという話が出たら、このファイルではなく `config.org` 側を編集する。
 
 ## 4.5. Claude が新規作成する org ファイルには `:ai:` タグを付ける
 
-Claude（このスキル経由）が新規作成した org ファイルだと後から判別できるように、[config.org](http://config.org) のテンプレートで生成した `#+FILETAGS:` に対して `:ai:` タグを追加する。既存ファイルへの追記であって新規作成でない場合は付けない。
+Claude（このスキル経由）が新規作成した org ファイルだと後から判別できるように、`config.org` のテンプレートで生成した `#+FILETAGS:` に対して `:ai:` タグを追加する。既存ファイルへの追記であって新規作成でない場合は付けない。
 
-```javascript
+```org
 #+FILETAGS: :ai:
 #+FILETAGS: :project:ai:
 ```
@@ -89,7 +89,7 @@ Claude（このスキル経由）が新規作成した org ファイルだと後
 
 そのまま素のテキストとして残したい場合は `:results output verbatim`（`verbatim` は `scalar` の別名）をつける。
 
-```javascript
+```org
 #+begin_src shell :results output verbatim
 echo '=== backend services ==='
 gcloud compute backend-services list --format='table(name,enableCDN)'
@@ -106,16 +106,16 @@ org-babel の shell コードブロックは基本的に非対話的（non-inter
 
 **A. 該当行だけ明示的に source する（推奨・副作用が少ない）**
 
-```javascript
+```org
 #+begin_src shell
 source "$HOME/.local/share/google-cloud-sdk/path.zsh.inc"
 which gcloud
 #+end_src
 ```
 
-<b>B. </b>**`:shebang`**<b> でログイン＋対話的シェルとして起動する</b>
+**B. `:shebang` でログイン＋対話的シェルとして起動する**
 
-```javascript
+```org
 #+begin_src shell :shebang "#!/bin/zsh -i -l"
 which gcloud
 #+end_src

@@ -4,9 +4,7 @@ description: "Google Apps ScriptをTypeScriptで開発・移行する際に、GA
 user-invocable: false
 ---
 
-<callout icon="📜" color="blue_bg">
 GASの非標準ランタイムとTypeScriptのモジュール開発を、ビルド境界・グローバル入口・テスト境界で両立させる。
-</callout>
 
 ## 完了条件
 

@@ -4,9 +4,7 @@ description: "日次・週次・期間・プロジェクト単位の振り返り
 disable-model-invocation: true
 ---
 
-<callout icon="🔄" color="green_bg">
 記録から事実を集め、評価を押し付けず、本人の意味づけと次の小さな行動まで対話で進める。
-</callout>
 
 ## 完了条件
 
@@ -122,5 +120,4 @@ disable-model-invocation: true
 - 学び・課題が具体例に基づくことを確認する。
 - 次の行動に対象と期限または開始条件があることを確認する。
 - 保存内容が本人の確認済みで、`artifact-destination`の結果と一致することを確認する。
-- Relationと本文の直接依存が`artifact-destination`だけで一致し、参照先がモデル起動、循環なしであることを確認する。
 - 完了・中断後に別のユーザー起動ワークフローを自動開始しないことを確認する。
