@@ -79,6 +79,6 @@ Notion の描画で残った記法と、Notion の `[DB]スキル v2` を前提�
 
 - **format-project-page と summarize-technical-discussion を外しました。** どちらも、ログと Notion のセッションで使った証拠が見つかりませんでした。会話の要約は summarize-slack-conversation の 1 本にします。
 - **discussion-synthesis を summarize-slack-conversation に移しました。** 呼ぶのが summarize-slack-conversation だけになったためです。規則は `oboro/skills/summarize-slack-conversation/references/構造化の規則.md` にあり、中身は変えていません（親子の受け渡しの言い方と、呼び出し元が持つ禁止事項だけを外しました）。別のスキルのままにするより、2 ファイルの合計で 205 行が 169 行になり、モデルが選ぶスキルの一覧からも 1 件減ります。
-- **apply-research-to-project は残しました。** imozuru と役割が重ならないためです。imozuru は知らない分野の原文を `~/research/<話題>/` に集めて場所を返すスキルで、「読んだ資料の要約や解説を書く」には使わず、プロジェクトのページにも書きません。apply-research-to-project は、終わった調査の記録から結論と判断理由を取り出し、確認のうえで親プロジェクトに書き込みます。imozuru の結果を、あとから apply-research-to-project でプロジェクトに反映する順につながります。
+- **apply-research-to-project は残しました。** 親プロジェクトを更新するかどうかで役割が分かれるためです。imozuru は知らない分野を調べるスキルで、原文を `~/research/<話題>/` に集め、map.md と、止めたあとの詳細レポート（`digest.html`）と抜き書きのページを作ります。成果物はその調査フォルダの中にとどまり、親プロジェクトのページには書きません。apply-research-to-project は、終わった調査の記録（imozuru のレポートも含む）から、持続する結論、判断理由、完了条件、対象外、次の行動だけを取り出し、項目ごとに確認を取ってから親プロジェクトの目的・決定ログ・完了条件などに書き込みます。調べる段階と、結果をプロジェクトに反映する段階の違いで、重なりません。
 - **Codex の一覧。** ユーザーが名前で呼ぶ 9 件に `agents/openai.yaml`（`allow_implicit_invocation: false`）を足しました。workflow-router と notion-slide-layout は、持ち主がまだ扱いを決めていないので足していません。
 
