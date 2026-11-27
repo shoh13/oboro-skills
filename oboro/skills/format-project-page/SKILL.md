@@ -4,9 +4,7 @@ description: "既存のプロジェクトページまたはタスクページを
 disable-model-invocation: true
 ---
 
-<callout icon="🗂️" color="blue_bg">
 内容を作り直さず、既存情報を見つけやすくするために構造だけを整える。
-</callout>
 
 ## 共通実行コンテキスト
 

@@ -4,9 +4,7 @@ description: "1回の対話で1テーマに絞って本人の経験・好み・�
 disable-model-invocation: true
 ---
 
-<callout icon="👤" color="green_bg">
 本人との対話から確認できた情報だけを、1テーマずつプロフィールへ外科的に反映する。
-</callout>
 
 ## 完了条件
 
@@ -92,5 +90,4 @@ disable-model-invocation: true
 - 今回のテーマ以外の既存内容が変更されていないことを確認する。
 - プロフィールの閲覧範囲が反映内容の機微に合っていることを確認する。
 - 更新対象と編集方法が`artifact-destination`の結果と一致することを確認する。
-- Relationと本文の直接依存が`artifact-destination`だけで一致し、参照先がモデル起動、循環なしであることを確認する。
 - 完了・中断後に別テーマや別のユーザー起動ワークフローを自動開始しないことを確認する。

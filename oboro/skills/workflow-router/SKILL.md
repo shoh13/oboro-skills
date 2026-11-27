@@ -4,9 +4,7 @@ description: "ユーザーの望む完了状態と現在地から候補を絞り
 disable-model-invocation: true
 ---
 
-<callout icon="🧭" color="blue_bg">
 ユーザーが開始する仕事の入口を選ぶためのルーター。推薦前に候補の実Skill本文を確認し、承認前には何も起動しない。
-</callout>
 
 ## 完了条件
 

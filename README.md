@@ -14,7 +14,7 @@ shoh13 の自作エージェントスキルを 1 つのプラグイン `oboro` �
 
 ## 入れ方
 
-まだどの端末にも入れていません。入れるときは次のとおりです。
+持ち主の Claude Code（2026-11-26）と Codex に入っています。入れ方は次のとおりです。
 
 ```sh
 claude plugin marketplace add shoh13/oboro-skills

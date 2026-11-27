@@ -4,9 +4,7 @@ description: "親ワークフローから渡された明確な問いを、指定
 user-invocable: false
 ---
 
-<callout icon="🔬" color="gray_bg">
 明確な問いを一次情報へ遡って調べ、親ワークフローが判断や成果物に利用できる証拠パケットを返す。書き込みはしない。
-</callout>
 
 ## 完了条件
 
@@ -54,7 +52,16 @@ user-invocable: false
 1. 入力Contractを検査し、問いを1つの検証可能な形へ言い換える。
 2. 親からsource scopeが渡された場合、各sourceをsource typeと安定識別子だけからなるcanonical descriptorへ正規化する。Notionはcanonical page UUID、Webはnormalized URL、Repoはrepo identity＋refまたはcommit＋normalized path、attachmentはcontent hashを使う。descriptorを完全一致でdedupeし、lexicographic sortした配列をcanonical JSONへ直列化し、そのUTF-8 bytesをhashして`source_scope_hash`とする。表示名、問い、claim、権限状態、test condition、label、取得順はhash入力へ含めない。正規化結果をHard Source Allowlistとして凍結し、descriptorの名前一致だけで同一sourceとみなさない。
 
-`MockCtl`の同じNotion pageだけをscopeにする静的例では、問いが「導入手順」でも「必要権限」でも、test conditionやlabel、取得順が異なっても、canonical descriptorは常に`{"source_type":"notion","stable_id":"&lt;canonical MockCtl page UUID&gt;"}`の1件だけになり、同じ`source_scope_hash`を返す。<br />3. 「このREADMEのみ」「指定2ページのみ」などの限定がある場合、allowlist外の検索、同名候補、関連ドメイン、一般Web、別Repoへ探索を広げない。指定sourceへアクセスできない、不存在、権限不足のいずれかなら`source_unavailable`として即停止し、代替sourceを検索・推測・利用しない。<br />4. source scopeが未指定の場合だけ、公式ドキュメント、仕様、標準、ソースコード、リリースノート、第一当事者の記録を優先して探索する。二次情報または検索結果は探索の入口に限り、採用するsourceと理由を記録してからHard Source Allowlistを凍結する。<br />5. 凍結したallowlist内だけで調査し、各情報源について、何が分かるか、適用条件、対象バージョン、確認日を記録する。<br />6. 重要な主張は、allowlistが複数sourceを許可する場合に限り、可能な範囲で複数の一次情報または実物の挙動と照合する。<br />7. 情報源が矛盾する場合は、新しさ、権威性、対象バージョン、適用範囲を比較し、差を隠さない。<br />8. 証拠が不足する部分を「未確認」として分離し、もっともらしい説明で埋めない。allowlist外sourceが必要でも同一実行では自己拡張しない。親が明示的にscope拡張を承認した新しい起動だけが、変更後のallowlistを作成できる。<br />9. 各claimのsource pointerを安定識別子でHard Source Allowlistと完全照合する。範囲外pointerが1件でもあれば証拠パケットを返さず、fail-fastする。<br />10. 全pointerがallowlist内である場合だけ、出力Contractの順に証拠パケットを組み立て、親へ返す。
+`MockCtl`の同じNotion pageだけをscopeにする静的例では、問いが「導入手順」でも「必要権限」でも、test conditionやlabel、取得順が異なっても、canonical descriptorは常に`{"source_type":"notion","stable_id":"<canonical MockCtl page UUID>"}`の1件だけになり、同じ`source_scope_hash`を返す。
+
+3. 「このREADMEのみ」「指定2ページのみ」などの限定がある場合、allowlist外の検索、同名候補、関連ドメイン、一般Web、別Repoへ探索を広げない。指定sourceへアクセスできない、不存在、権限不足のいずれかなら`source_unavailable`として即停止し、代替sourceを検索・推測・利用しない。
+4. source scopeが未指定の場合だけ、公式ドキュメント、仕様、標準、ソースコード、リリースノート、第一当事者の記録を優先して探索する。二次情報または検索結果は探索の入口に限り、採用するsourceと理由を記録してからHard Source Allowlistを凍結する。
+5. 凍結したallowlist内だけで調査し、各情報源について、何が分かるか、適用条件、対象バージョン、確認日を記録する。
+6. 重要な主張は、allowlistが複数sourceを許可する場合に限り、可能な範囲で複数の一次情報または実物の挙動と照合する。
+7. 情報源が矛盾する場合は、新しさ、権威性、対象バージョン、適用範囲を比較し、差を隠さない。
+8. 証拠が不足する部分を「未確認」として分離し、もっともらしい説明で埋めない。allowlist外sourceが必要でも同一実行では自己拡張しない。親が明示的にscope拡張を承認した新しい起動だけが、変更後のallowlistを作成できる。
+9. 各claimのsource pointerを安定識別子でHard Source Allowlistと完全照合する。範囲外pointerが1件でもあれば証拠パケットを返さず、fail-fastする。
+10. 全pointerがallowlist内である場合だけ、出力Contractの順に証拠パケットを組み立て、親へ返す。
 
 ## 判断基準
 
@@ -94,19 +101,3 @@ user-invocable: false
 - すべてのclaimのsource pointerが安定識別子でallowlist内と完全一致することを確認する。
 - 事実、相違、不確実性、含意が混ざっていないことを確認する。
 - 書き込み、保存先決定、意思決定を行っておらず、副作用が0であることを確認する。
-
-## 検証履歴
-
-<date start="2026-09-20" /> の作成時点では静的検査だけを完了し、source scope境界の実動検証は未実施だった。その後、Phase 13で次を検証した。
-
-- [x] ページがSkillとして有効化され、起動主体がモデル起動である。
-- [x] 他Skillへの依存がなく、循環を作らない。
-- [x] 同じsource集合では問い、test condition、label、取得順によらず`source_scope_hash`が一致する。
-- [x] Hard Source Allowlist外の同名情報へ拡張しない。
-- [x] source unavailableでは代替探索0、証拠パケット0で停止する。
-- [x] allowlist外pointerが1件でもあればパケット全体をfail-fastする。
-- [x] 保存先決定・書き込み・意思決定を行わず、副作用は0である。
-
-- 現行証拠：[Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb)
-
-Phase 13の正常系・境界系・fail-fast検証に合格し、ライフサイクルは`安定版`である。

@@ -4,9 +4,7 @@ description: "覆しにくく、文脈がないと意外で、真のトレード
 user-invocable: false
 ---
 
-<callout icon="🏛️" color="purple_bg">
 重要な設計判断の内容を統一形式のADRとして作成・更新する。保存先の判断は必要な場合だけ委譲し、ADR以外の成果物は扱わない。
-</callout>
 
 ## 入力Contract
 
@@ -68,8 +66,6 @@ user-invocable: false
 
 ## 検証
 
-- 起動主体はモデル起動である。
-- 本文の直接呼び出しは`artifact-destination`だけで、Relationと一致する。
 - 正常系では保存先を再解決しない。
 - 不足時だけ`artifact-destination`を呼ぶ。
 - 競合時は書き込みを停止して親へ返す。
