@@ -1,12 +1,18 @@
 ---
 name: org-file-conventions
-description: "~/repo/05_org配下のorg-modeファイル（roamノート含む）作成・追記時の書式ガイド。装飾記号の前後スペース、コードブロックのresults指定、frontmatterの生成元（config.org）、id:リンクによるバックリンクなど、踏みがちな罠をまとめる。"
+description: "org-roam で管理している org ノート（置き場は oboro の設定ファイルの `[org]`。setup-oboro が書く）を作る・追記するときの書式ガイド。装飾記号の前後スペース、コードブロックのresults指定、frontmatterの生成元（capture テンプレート）、id:リンクによるバックリンクなど、踏みがちな罠をまとめる。その置き場の外の org ファイルには使わない。"
 user-invocable: false
 ---
 
 # org ファイルの書き方
 
-このユーザーの `~/repo/05_org/` は org-roam で管理されているノート群。ここでは新規作成・追記のたびに踏みがちな罠を要点としてまとめる。
+ユーザーの org-roam のノート群に、新規作成・追記のたびに踏みがちな罠を要点としてまとめる。置き場とテンプレートの場所は端末ごとに違うので、oboro の設定ファイルから読む。
+
+## 0. 設定を読む
+
+1. 設定ファイルのパスをシェルで確かめる：`echo "${OBORO_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/oboro/config.toml}"`。あれば `[org]` を読む（キーの意味は setup-oboro の表）。以下の `org.dir` などは、その値を指す。
+2. **設定ファイルか `[org]` がないとき**は、ほかの端末の置き場や dotfiles などの決まったパスを読みに行かない。設定がないことを伝え、setup-oboro で設定するか、設定なしで進めるかを尋ねる。設定なしで進めるときは 1〜3 と 5〜7 の一般的な書き方だけを使い、frontmatter はユーザーに確かめた形で書く（4 と 4.5 は使わない）。
+3. **依頼の対象が `org.dir` の外のとき**は、このスキルの対象ではない。org-mode の一般的な書き方だけを使い、capture テンプレートと `:ai:` タグを当てはめない。
 
 ## 1. テキスト装飾は前後にスペースが要る
 
@@ -51,14 +57,14 @@ gh issue list --repo $repo --state all
 #+PROPERTY: header-args:shell :var repo="owner/repo"
 ```
 
-## 4. 新規ファイルの frontmatter は `~/dotfiles/home-manager/doom.d/config.org` が SSoT
+## 4. 新規ファイルの frontmatter は `org.capture_config` のファイルが SSoT
 
-新規 .org ファイルの frontmatter（`:ID:` / `#+TITLE:` / `#+OPTIONS:` / `#+DATE:` / `#+LANGUAGE:` / `#+FILETAGS:` の型）は、このユーザーが実際に手で打たず org-capture / org-roam-capture 経由で自動生成しているため、その生成元である `~/dotfiles/home-manager/doom.d/config.org` の「Org-mode」セクションが唯一の正となる。ここに書き写したコピーではなく、必ず作業のたびにそのファイルを読んで現在のテンプレートを確認すること（`config.org` 側が更新されればテンプレートも変わるため、このファイルに固定のひな形を書いてしまうと乖離する）。
+新規 .org ファイルの frontmatter（`:ID:` / `#+TITLE:` / `#+OPTIONS:` / `#+DATE:` / `#+LANGUAGE:` / `#+FILETAGS:` の型）は、このユーザーが実際に手で打たず org-capture / org-roam-capture 経由で自動生成しているため、その生成元である `org.capture_config` のファイルが唯一の正となる。ここに書き写したコピーではなく、必ず作業のたびにそのファイルを読んで現在のテンプレートを確認すること（テンプレートの正本が更新されればテンプレートも変わるため、このファイルに固定のひな形を書いてしまうと乖離する）。
 
 読むべき箇所は2つ:
 
-- `org-capture-templates` の `"m" "Work memo"`（`~/repo/05_org/roam/` 直下に手動でタイトルを入力して作る場合）
-- `org-roam-capture-templates` の `"d" "default"`（org-roam-node-find などノード検索経由で作る場合）
+- `org-capture-templates` のキー `org.memo_template`（`org.memo_dir` 直下に手動でタイトルを入力して作る場合）
+- `org-roam-capture-templates` のキー `org.node_template`（org-roam-node-find などノード検索経由で作る場合）
 
 どちらもテンプレート文字列は Emacs Lisp の式が混ざっているので、この環境（Emacs の外）で新規ファイルを作るときは以下のように読み替える:
 
@@ -68,11 +74,11 @@ gh issue list --repo $repo --state all
 | `%<%Y-%m-%d>` | 今日の日付 | `date +%Y-%m-%d` |
 | `%(org-capture-get :my-title)` / `${title}` | ユーザーが入力したタイトル | ユーザーに確認したタイトル文字列 |
 
-`#+FILETAGS:` の区切り方（スペース区切りかコロン区切りか）や `#+OPTIONS:` の具体的な値も `config.org` のテンプレート文字列にある通りに従う。テンプレート自体を変更したい・新しい frontmatter の項目を足したいという話が出たら、このファイルではなく `config.org` 側を編集する。
+`#+FILETAGS:` の区切り方（スペース区切りかコロン区切りか）や `#+OPTIONS:` の具体的な値も、`org.capture_config` のテンプレート文字列にある通りに従う。テンプレート自体を変更したい・新しい frontmatter の項目を足したいという話が出たら、このファイルではなく `org.capture_config` のファイルを編集する。
 
 ## 4.5. Claude が新規作成する org ファイルには `:ai:` タグを付ける
 
-Claude（このスキル経由）が新規作成した org ファイルだと後から判別できるように、`config.org` のテンプレートで生成した `#+FILETAGS:` に対して `:ai:` タグを追加する。既存ファイルへの追記であって新規作成でない場合は付けない。
+Claude（このスキル経由）が新規作成した org ファイルだと後から判別できるように、`org.capture_config` のテンプレートで生成した `#+FILETAGS:` に対して `:ai:` タグを追加する。既存ファイルへの追記であって新規作成でない場合は付けない。
 
 ```org
 #+FILETAGS: :ai:
@@ -106,9 +112,11 @@ org-babel の shell コードブロックは基本的に非対話的（non-inter
 
 **A. 該当行だけ明示的に source する（推奨・副作用が少ない）**
 
+source するファイルは `org.shell_init` にある（例は gcloud SDK の `path.zsh.inc`）。
+
 ```org
 #+begin_src shell
-source "$HOME/.local/share/google-cloud-sdk/path.zsh.inc"
+source "<org.shell_init のファイル>"
 which gcloud
 #+end_src
 ```
