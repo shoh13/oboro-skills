@@ -31,6 +31,6 @@ codex plugin add oboro@oboro-skills
 
 端末によって違うパス（org-roam のノートの置き場など）は、スキルに書かず、リポジトリの外の設定ファイルに置きます。
 
-- 場所は `~/.config/oboro/config.toml`（`XDG_CONFIG_HOME` があればその下、`OBORO_CONFIG` があればそのパス）。
+- 場所は `~/.config/oboro/config.toml`（環境変数 `OBORO_CONFIG` があればそのパス）。
 - `/setup-oboro`（Codex では `$setup-oboro`）が端末を調べ、確かめてから書きます。パスと名前だけを書き、秘密の値は書きません。
 - 今これを読むのは org-file-conventions だけです。設定がなければ、決まったパスを読みに行かずに、設定するか尋ねます。

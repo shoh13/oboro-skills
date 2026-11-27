@@ -10,7 +10,7 @@ user-invocable: false
 
 ## 0. 設定を読む
 
-1. 設定ファイルのパスをシェルで確かめる：`echo "${OBORO_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/oboro/config.toml}"`。あれば `[org]` を読む（キーの意味は setup-oboro の表）。以下の `org.dir` などは、その値を指す。
+1. 設定ファイルは `~/.config/oboro/config.toml`。環境変数 `OBORO_CONFIG` があれば、そのパスを使う。`printenv OBORO_CONFIG` をこのまま実行して確かめ、変数展開を含むコマンドにしない（Claude Code が事前に検査できず、毎回確認を求めるため）。ファイルがあれば `[org]` を読む（キーの意味は setup-oboro の表）。以下の `org.dir` などは、その値を指す。
 2. **設定ファイルか `[org]` がないとき**は、ほかの端末の置き場や dotfiles などの決まったパスを読みに行かない。設定がないことを伝え、setup-oboro で設定するか、設定なしで進めるかを尋ねる。設定なしで進めるときは 1〜3 と 5〜7 の一般的な書き方だけを使い、frontmatter はユーザーに確かめた形で書く（4 と 4.5 は使わない）。
 3. **依頼の対象が `org.dir` の外のとき**は、このスキルの対象ではない。org-mode の一般的な書き方だけを使い、capture テンプレートと `:ai:` タグを当てはめない。
 

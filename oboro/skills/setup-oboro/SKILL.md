@@ -10,7 +10,7 @@ oboro のスキルのうち、端末ごとに違う値を使うものは、こ�
 
 ## 設定ファイル
 
-- **場所。** `${OBORO_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/oboro/config.toml}`。シェルで `echo` して実際のパスを確かめる。`OBORO_CONFIG` は、別の場所に置くときや試験のときだけ使う。
+- **場所。** `~/.config/oboro/config.toml`。環境変数 `OBORO_CONFIG` があれば、そのパス。`printenv OBORO_CONFIG` をこのまま実行して確かめる（変数展開を含むコマンドは Claude Code が事前に検査できない）。`OBORO_CONFIG` は、別の場所に置くときや試験のときだけ使う。
 - **形式。** TOML。キーは下の表のものだけ。パスと名前だけを書き、トークン、パスワード、API キーなどの秘密の値は書かない。`~` は読む側がホームに展開する。
 - **dotfiles での管理。** このファイルを dotfiles に置き、home-manager なら `xdg.configFile."oboro/config.toml".source` で置ける。
 
