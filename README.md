@@ -4,11 +4,12 @@ shoh13 の自作エージェントスキルを 1 つのプラグイン `oboro` �
 
 ## 中身
 
-`oboro/skills/` に 17 件あります。
+`oboro/skills/` に 18 件あります。
 
 - 16 件は、2026-11-19 に Notion の `[DB]スキル v2` の `original` パックから移しました。本文と補助ファイルはパックのままで、frontmatter だけを書き直しています（2026-11-28 に、Notion の描画の残りと v2 の DB にしかない記述を本文から外しました。`docs/sources.md`）。`notion_page_id` を外し、v2 の `user-invocable` と `disable-model-invocation` の値を frontmatter に移しました。このうち discussion-synthesis は、2026-11-28 に summarize-slack-conversation の `references/構造化の規則.md` に移しました。workflow-router と notion-slide-layout は、2026-11-28 に持ち主の判断で外しました。
 - 5 件（apply-research-to-project、evidence-research、format-project-page、gas-typescript、summarize-technical-discussion）は、2026-11-25 に同じやり方で戻しました。同じ日に戻した ja-lint-register は 2026-11-26 に、format-project-page と summarize-technical-discussion は 2026-11-28 に、持ち主の判断で外しました。
 - resolving-merge-conflicts は mattpocock/skills から消えたスキルを書き直したもので、本家の MIT ライセンスを同梱しています。
+- setup-oboro は 2026-11-28 に足した自作のスキルで、端末ごとの設定ファイルを書きます（下の「端末ごとの設定」）。
 
 外部のスキルの出どころと、このリポジトリから外したもの（k16shikano さんの 2 件、ja-lint-register、2026-11-28 の 5 件）は `docs/sources.md` にあります。
 
@@ -25,3 +26,11 @@ claude plugin install oboro@oboro-skills
 codex plugin marketplace add shoh13/oboro-skills
 codex plugin add oboro@oboro-skills
 ```
+
+## 端末ごとの設定
+
+端末によって違うパス（org-roam のノートの置き場など）は、スキルに書かず、リポジトリの外の設定ファイルに置きます。
+
+- 場所は `~/.config/oboro/config.toml`（環境変数 `OBORO_CONFIG` があればそのパス）。
+- `/setup-oboro`（Codex では `$setup-oboro`）が端末を調べ、確かめてから書きます。パスと名前だけを書き、秘密の値は書きません。
+- 今これを読むのは org-file-conventions だけです。設定がなければ、決まったパスを読みに行かずに、設定するか尋ねます。
