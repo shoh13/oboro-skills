@@ -41,7 +41,7 @@ user-invocable: false
 - Titleは意思決定を表す文にする。
 - Statusは該当する1項目だけを有効にする。
 - 1つのRepoのコードに関する設計判断は、そのRepoの`docs/adr/`にファイルとして置く。
-- それ以外の設計判断は、NotionのKnowledge（種類decision）に新しい行として書く。書き方と置き換えの記録方法は、エントリページ[エージェント運用ガイド](https://app.notion.com/p/421ed7564258812c8b4dfc3c0cf8d363)に従う。
+- それ以外の設計判断の保存先は、`artifact-destination`の環境既定（ユーザーの指示ファイルが示す正本）に従う。書き方と置き換えの記録方法も、その正本に従う。
 - Decision、Context、Considerationを特に明確にする。
 - 判断に不可欠な情報はリンクだけに依存せず本文にも残す。
 
