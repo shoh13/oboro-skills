@@ -71,14 +71,16 @@ Notion の描画で残った記法と、Notion の `[DB]スキル v2` を前提�
 
 - **記法。** 冒頭の `<callout>` の囲み（中の文は残した）、`\*\*`、`[AGENTS.md](http://AGENTS.md)` のような自動リンク、`<date start=… />`、`<b>`、evidence-research の手順 3〜10 を 1 行につないでいた `<br />`、notion-slide-layout の番号の振り直しを直しました。doc-state-machine の本文の頭に残っていた 2 つ目の frontmatter（`notion_page_id` つき）を外し、`f docx` を `-f docx` に戻しました。
 - **Relation の検査。** 「本文の呼び出しと Relation が一致する」「起動主体はモデル起動である」は、v2 の DB のプロパティを確かめる項目で、このリポジトリには対応するものがないので外しました（9 件）。
-- **検証の履歴。** evidence-research と guided-setup の「検証履歴」の節を外しました。どちらの証拠も Notion の [Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb) にあります。workflow-router の Phase 12・13 のリンクは残しています。
+- **検証の履歴。** evidence-research と guided-setup の「検証履歴」の節を外しました。どちらの証拠も Notion の [Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb) にあります。workflow-router の Phase 12・13 のリンクは残しました（workflow-router は、その後 2026-11-28 に外しました）。
 - **例のリポジトリ名。** org-file-conventions の `:var` の例のリポジトリ名を `owner/repo` にしました。
 - **戻せなかった 1 か所。** org-file-conventions の表の `%(org-id-new)` の行は、Notion が表の中の `|` を壊していて、`uuidgen` に続く元のコマンドが分かりません。崩れていない元が見つからないので、そのままにしています。
 
 ## 2026-11-28 に外した・移したもの（持ち主の判断）
 
 - **format-project-page と summarize-technical-discussion を外しました。** どちらも、ログと Notion のセッションで使った証拠が見つかりませんでした。会話の要約は summarize-slack-conversation の 1 本にします。
+- **workflow-router を外しました。** 使った証拠がありませんでした。索引（34 件。mattpocock の外部スキル 20 件以上を含む）は、外部スキルの改名や追加のたびに手で直す必要があり、手順と検証は Notion の v2 の DB と Phase 12・13 のページを前提にしていました。Claude Code と Codex は、一覧からスキルを自分で選べます。
+- **notion-slide-layout を外しました。** Notion の記法（callout、columns）が前提なので、Notion のスキルとして登録して使います。
 - **discussion-synthesis を summarize-slack-conversation に移しました。** 呼ぶのが summarize-slack-conversation だけになったためです。規則は `oboro/skills/summarize-slack-conversation/references/構造化の規則.md` にあり、中身は変えていません（親子の受け渡しの言い方と、呼び出し元が持つ禁止事項だけを外しました）。別のスキルのままにするより、2 ファイルの合計で 205 行が 169 行になり、モデルが選ぶスキルの一覧からも 1 件減ります。
 - **apply-research-to-project は残しました。** 親プロジェクトを更新するかどうかで役割が分かれるためです。imozuru は知らない分野を調べるスキルで、原文を `~/research/<話題>/` に集め、map.md と、止めたあとの詳細レポート（`digest.html`）と抜き書きのページを作ります。成果物はその調査フォルダの中にとどまり、親プロジェクトのページには書きません。apply-research-to-project は、終わった調査の記録（imozuru のレポートも含む）から、持続する結論、判断理由、完了条件、対象外、次の行動だけを取り出し、項目ごとに確認を取ってから親プロジェクトの目的・決定ログ・完了条件などに書き込みます。調べる段階と、結果をプロジェクトに反映する段階の違いで、重なりません。
-- **Codex の一覧。** ユーザーが名前で呼ぶ 9 件に `agents/openai.yaml`（`allow_implicit_invocation: false`）を足しました。workflow-router と notion-slide-layout は、持ち主がまだ扱いを決めていないので足していません。
+- **Codex の一覧。** ユーザーが名前で呼ぶ 9 件に `agents/openai.yaml`（`allow_implicit_invocation: false`）を足しました。
 
