@@ -84,3 +84,9 @@ Notion の描画で残った記法と、Notion の `[DB]スキル v2` を前提�
 - **apply-research-to-project は残しました。** 親プロジェクトを更新するかどうかで役割が分かれるためです。imozuru は知らない分野を調べるスキルで、原文を `~/research/<話題>/` に集め、map.md と、止めたあとの詳細レポート（`digest.html`）と抜き書きのページを作ります。成果物はその調査フォルダの中にとどまり、親プロジェクトのページには書きません。apply-research-to-project は、終わった調査の記録（imozuru のレポートも含む）から、持続する結論、判断理由、完了条件、対象外、次の行動だけを取り出し、項目ごとに確認を取ってから親プロジェクトの目的・決定ログ・完了条件などに書き込みます。調べる段階と、結果をプロジェクトに反映する段階の違いで、重なりません。
 - **Codex の一覧。** ユーザーが名前で呼ぶ 9 件に `agents/openai.yaml`（`allow_implicit_invocation: false`）を足しました。
 
+## setup-oboro と端末ごとの設定（2026-11-28）
+
+- **出どころ。** 自作。pstack の setup-pstack（端末の状態を調べ、決めた値をリポジトリの外の設定ファイルに書き、各スキルがそれを読む）を手本にしました。
+- **置き場と形式。** `~/.config/oboro/config.toml`（TOML）にしました。比べたもう 1 案は `~/.agents/oboro.md`（Markdown の箇条書き）です。どちらも Claude Code と Codex から読めましたが、TOML は `tomllib` で検査でき、home-manager の `xdg.configFile` でそのまま置け、キーを決めておけるので秘密の値を入れる欄がありません。`~/.agents/` は skills の CLI が管理する場所なので避けました。
+- **org-file-conventions。** `~/repo/05_org`、`config.org` のパス、capture テンプレートのキー（`m`・`d`）、gcloud の `path.zsh.inc` を、設定の `[org]` から読むようにしました。
+
