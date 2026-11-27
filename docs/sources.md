@@ -74,3 +74,11 @@ Notion の描画で残った記法と、Notion の `[DB]スキル v2` を前提�
 - **検証の履歴。** evidence-research と guided-setup の「検証履歴」の節を外しました。どちらの証拠も Notion の [Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb) にあります。workflow-router の Phase 12・13 のリンクは残しています。
 - **例のリポジトリ名。** org-file-conventions の `:var` の例のリポジトリ名を `owner/repo` にしました。
 - **戻せなかった 1 か所。** org-file-conventions の表の `%(org-id-new)` の行は、Notion が表の中の `|` を壊していて、`uuidgen` に続く元のコマンドが分かりません。崩れていない元が見つからないので、そのままにしています。
+
+## 2026-11-28 に外した・移したもの（持ち主の判断）
+
+- **format-project-page と summarize-technical-discussion を外しました。** どちらも、ログと Notion のセッションで使った証拠が見つかりませんでした。会話の要約は summarize-slack-conversation の 1 本にします。
+- **discussion-synthesis を summarize-slack-conversation に移しました。** 呼ぶのが summarize-slack-conversation だけになったためです。規則は `oboro/skills/summarize-slack-conversation/references/構造化の規則.md` にあり、中身は変えていません（親子の受け渡しの言い方と、呼び出し元が持つ禁止事項だけを外しました）。別のスキルのままにするより、2 ファイルの合計で 205 行が 169 行になり、モデルが選ぶスキルの一覧からも 1 件減ります。
+- **apply-research-to-project は残しました。** imozuru と役割が重ならないためです。imozuru は知らない分野の原文を `~/research/<話題>/` に集めて場所を返すスキルで、「読んだ資料の要約や解説を書く」には使わず、プロジェクトのページにも書きません。apply-research-to-project は、終わった調査の記録から結論と判断理由を取り出し、確認のうえで親プロジェクトに書き込みます。imozuru の結果を、あとから apply-research-to-project でプロジェクトに反映する順につながります。
+- **Codex の一覧。** ユーザーが名前で呼ぶ 9 件に `agents/openai.yaml`（`allow_implicit_invocation: false`）を足しました。workflow-router と notion-slide-layout は、持ち主がまだ扱いを決めていないので足していません。
+
