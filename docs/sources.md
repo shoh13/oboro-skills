@@ -72,5 +72,5 @@ Notion の描画で残った記法と、Notion の `[DB]スキル v2` を前提�
 - **記法。** 冒頭の `<callout>` の囲み（中の文は残した）、`\*\*`、`[AGENTS.md](http://AGENTS.md)` のような自動リンク、`<date start=… />`、`<b>`、evidence-research の手順 3〜10 を 1 行につないでいた `<br />`、notion-slide-layout の番号の振り直しを直しました。doc-state-machine の本文の頭に残っていた 2 つ目の frontmatter（`notion_page_id` つき）を外し、`f docx` を `-f docx` に戻しました。
 - **Relation の検査。** 「本文の呼び出しと Relation が一致する」「起動主体はモデル起動である」は、v2 の DB のプロパティを確かめる項目で、このリポジトリには対応するものがないので外しました（9 件）。
 - **検証の履歴。** evidence-research と guided-setup の「検証履歴」の節を外しました。どちらの証拠も Notion の [Phase 13 最終実動再試験 — evidence hash・平坦化](https://app.notion.com/p/996095336b07404eb27858f8b5dd9dbb) にあります。workflow-router の Phase 12・13 のリンクは残しています。
-- **仕事のリポジトリ名。** org-file-conventions の `:var` の例にあった仕事のリポジトリ名を `owner/repo` にしました。このリポジトリは公開です。
+- **例のリポジトリ名。** org-file-conventions の `:var` の例のリポジトリ名を `owner/repo` にしました。
 - **戻せなかった 1 か所。** org-file-conventions の表の `%(org-id-new)` の行は、Notion が表の中の `|` を壊していて、`uuidgen` に続く元のコマンドが分かりません。崩れていない元が見つからないので、そのままにしています。
