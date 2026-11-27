@@ -87,6 +87,7 @@ Notion の描画で残った記法と、Notion の `[DB]スキル v2` を前提�
 ## setup-oboro と端末ごとの設定（2026-11-28）
 
 - **出どころ。** 自作。pstack の setup-pstack（端末の状態を調べ、決めた値をリポジトリの外の設定ファイルに書き、各スキルがそれを読む）を手本にしました。
-- **置き場と形式。** `~/.config/oboro/config.toml`（TOML）にしました。比べたもう 1 案は `~/.agents/oboro.md`（Markdown の箇条書き）です。どちらも Claude Code と Codex から読めましたが、TOML は `tomllib` で検査でき、home-manager の `xdg.configFile` でそのまま置け、キーを決めておけるので秘密の値を入れる欄がありません。`~/.agents/` は skills の CLI が管理する場所なので避けました。
+- **置き場と形式。** `~/.config/oboro/config.toml`（TOML）にしました。比べたもう 1 案は `~/.agents/oboro.md`（Markdown の箇条書き）です。2 案の写しを Claude Code と Codex にそれぞれ 1 回ずつ読ませ、4 回とも読めました。違いはほかの点に出ました。TOML は `tomllib` で読めるので検査でき、home-manager の `xdg.configFile` でそのまま置け、キーを決めておけるので秘密の値を入れる欄がありません。`~/.agents/` は skills の CLI がロックファイルを置く場所なので避けました。
+- **パスの確かめ方。** 最初の版は `${OBORO_CONFIG:-${XDG_CONFIG_HOME:-…}}` を `echo` していましたが、隔離した Claude Code では「波かっこの中の変数は実行前に検査できない」として拒否されました。許可の規則でも通せないので、使うたびに確認を求められます。`printenv OBORO_CONFIG` をそのまま実行し、なければ `~/.config/oboro/config.toml` を読む形にしました。`XDG_CONFIG_HOME` は読みません。
 - **org-file-conventions。** `~/repo/05_org`、`config.org` のパス、capture テンプレートのキー（`m`・`d`）、gcloud の `path.zsh.inc` を、設定の `[org]` から読むようにしました。
 
