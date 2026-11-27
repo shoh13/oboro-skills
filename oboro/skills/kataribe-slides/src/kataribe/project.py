@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from kataribe.adapters import voicevox
 from kataribe.images import ImageError, inline_images
 from kataribe.scenes import SceneError, check_scene_attributes, check_scene_sections
 from kataribe.voices import allowed_voices
@@ -46,6 +47,15 @@ class Source:
 
 
 @dataclass(frozen=True)
+class AccentWord:
+    """readings.json の {"reading": …, "accent": …} の項目。エンジンのユーザー辞書に、表記も発音も reading の語として登録する。"""
+
+    surface: str  # readings.json の表記（台本の中で置き換える文字列）
+    reading: str  # カタカナの読み
+    accent: int  # アクセント核の拍の位置（1始まり）。0 は平板型
+
+
+@dataclass(frozen=True)
 class Project:
     title: str
     description: str | None
@@ -53,14 +63,20 @@ class Project:
     chapters: tuple[Chapter, ...]
     lines: tuple[Line, ...]
     scenes_html: str
-    readings: dict[str, str]
+    readings: dict[str, str]  # 表記 → 読み。アクセントを指定した項目も読みだけを持つ
     warnings: tuple[str, ...] = ()
     scenes: tuple[Scene, ...] = ()
+    accents: tuple[AccentWord, ...] = ()
 
     @property
     def voices(self) -> tuple[str, ...]:
         """使った声（話者）。台本で初めて出た順。地の文は含まない。"""
         return tuple(dict.fromkeys(line.speaker for line in self.lines if line.speaker is not None))
+
+
+def accent_words(project: Project) -> tuple[tuple[str, int], ...]:
+    """ユーザー辞書に登録する（読み, アクセント）。同じ読みは1回だけ（load_project が、違うアクセントを拒む）。"""
+    return tuple(dict.fromkeys((word.reading, word.accent) for word in project.accents))
 
 
 def _read_json(path: Path):
@@ -170,25 +186,69 @@ def _scene_title(scene: dict, path: str) -> str | None:
     return title
 
 
-def load_project(root: Path, slides: bool = False) -> Project:
+def _accent_word(surface: str, entry: dict) -> AccentWord:
+    where = f"readings.json の「{surface}」"
+    unknown = sorted(set(entry) - {"reading", "accent"})
+    if unknown:
+        raise ProjectError(f"{where}に使えないキーがあります: {', '.join(unknown)}（使えるのは reading と accent）")
+    if "reading" not in entry or "accent" not in entry:
+        raise ProjectError(f"{where}には reading と accent の両方が必要です")
+    reading, accent = entry["reading"], entry["accent"]
+    if not isinstance(reading, str) or not voicevox.KATAKANA.fullmatch(reading):
+        raise ProjectError(f"{where}の reading はカタカナ（長音「ー」を含む）だけの文字列である必要があります: {reading!r}")
+    if not isinstance(accent, int) or isinstance(accent, bool):
+        raise ProjectError(f"{where}の accent は整数である必要があります: {accent!r}")
+    moras = voicevox.mora_count(reading)
+    if not 0 <= accent <= moras:
+        raise ProjectError(f"{where}の accent は 0（平板型）から {moras}（「{reading}」の拍の数）までです: {accent}")
+    return AccentWord(surface=surface, reading=reading, accent=accent)
+
+
+def _load_readings(readings: object) -> tuple[dict[str, str], tuple[AccentWord, ...]]:
+    """readings.json の値は、読みの文字列か、{"reading": カタカナ, "accent": アクセント核の位置} のオブジェクト。"""
+    if not isinstance(readings, dict):
+        raise ProjectError("readings.json は JSON のオブジェクトである必要があります")
+    spoken: dict[str, str] = {}
+    accents: list[AccentWord] = []
+    for surface, value in readings.items():
+        if isinstance(value, dict):
+            word = _accent_word(surface, value)
+            accents.append(word)
+            spoken[surface] = word.reading
+        elif isinstance(value, str):
+            spoken[surface] = value
+        else:
+            raise ProjectError(f"readings.json の「{surface}」の読みは文字列である必要があります")
+    first: dict[str, AccentWord] = {}
+    for word in accents:
+        other = first.setdefault(word.reading, word)
+        if other.accent != word.accent:
+            raise ProjectError(
+                f"readings.json の「{other.surface}」と「{word.surface}」は、同じ読み「{word.reading}」に"
+                f"違うアクセント（{other.accent} と {word.accent}）を指定しています"
+            )
+    return spoken, tuple(accents)
+
+
+def load_project(root: Path, slides: bool = False, require_scenes: bool = True) -> Project:
     """台本を読む。slides なら、地の文（speaker のない行）を許し、readings.json と scenes.html を任意にする
-    （scenes.html にシーンの section がなければ、そのスライドは図なし）。"""
+    （scenes.html にシーンの section がなければ、そのスライドは図なし）。
+    require_scenes が偽なら、scenes.html がなくても読む（readings は画面を使わない）。あれば、いつもどおり検査する。"""
     script = _read_json(root / "script.json")
     if not isinstance(script, dict):
         raise ProjectError("script.json は JSON のオブジェクトである必要があります")
     title = _text_field(script, "title")
     old_voice = "voice" in script
-    readings = {} if slides and not (root / "readings.json").exists() else _read_json(root / "readings.json")
-    if not isinstance(readings, dict):
-        raise ProjectError("readings.json は JSON のオブジェクトである必要があります")
-    for surface, spoken in readings.items():
-        if not isinstance(spoken, str):
-            raise ProjectError(f"readings.json の「{surface}」の読みは文字列である必要があります")
+    readings, accents = _load_readings(
+        {} if slides and not (root / "readings.json").exists() else _read_json(root / "readings.json")
+    )
+    scenes_present = True
     try:
         scenes_html = (root / "scenes.html").read_text(encoding="utf-8")
     except FileNotFoundError:
-        if not slides:
+        if not slides and require_scenes:
             raise ProjectError(f"scenes.html が見つかりません: {root}") from None
+        scenes_present = False
         scenes_html = ""
 
     chapters = []
@@ -246,7 +306,7 @@ def load_project(root: Path, slides: bool = False) -> Project:
     for line in lines:
         line_counts[line.scene_id] = line_counts.get(line.scene_id, 0) + 1
     try:
-        warnings = check_scene_sections(scenes_html, seen_scenes, required=not slides)
+        warnings = check_scene_sections(scenes_html, seen_scenes, required=not slides and scenes_present)
         check_scene_attributes(scenes_html, line_counts)
         scenes_html = inline_images(scenes_html, root)
     except (SceneError, ImageError) as e:
@@ -265,4 +325,5 @@ def load_project(root: Path, slides: bool = False) -> Project:
         readings=readings,
         warnings=tuple(warnings),
         scenes=tuple(scenes),
+        accents=accents,
     )

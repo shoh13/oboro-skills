@@ -31,7 +31,7 @@ from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
-from kataribe.art import DEFAULT_FACE, build_cast, used_faces
+from kataribe.art import DEFAULT_FACE, asset_warnings, build_cast, used_faces
 from kataribe.definitions import load_definitions
 from kataribe.diagrams import render_diagrams, scenes_with_diagram
 from kataribe.output import write_output
@@ -589,7 +589,7 @@ def render_slides(project: Project, cast: list[dict], diagrams: dict[int, bytes]
 def lint_slides(root: Path) -> list[str]:
     project = load_project(root, slides=True)
     used_faces(project)  # 表情が立ち絵の定義にあるか（素材は取得しない）
-    return slide_warnings(project)
+    return slide_warnings(project) + asset_warnings(project)
 
 
 def build_slides(root: Path, warn: Callable[[list[str]], None], out: Path | None = None) -> None:

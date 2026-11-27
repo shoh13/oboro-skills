@@ -9,6 +9,8 @@ FREEZE_CSS = """
   animation-iteration-count: 1 !important;
   animation-fill-mode: forwards !important;
 }
+/* 画面の右下に固定したキー操作のボタンは、ステージの隅に重なって写るので消す */
+#kataribe-keys-open { display: none !important; }
 """
 
 
@@ -16,19 +18,35 @@ class BrowserError(Exception):
     pass
 
 
+# Playwright が、実行ファイルがないときに返すエラーの文言
+NOT_INSTALLED = ("is not found at", "Executable doesn't exist")
+
+
+def _launch_failure(error: Exception, install: str) -> str:
+    """起動の失敗を、未導入（入れれば直る）と起動の失敗（入っているが起動を拒否された、など）に分けて説明する。"""
+    message = str(error)
+    if any(phrase in message for phrase in NOT_INSTALLED):
+        return f"未導入です。{install}"
+    lines = message.splitlines()
+    # 先頭行は一般的な文のことが多く、拒否の理由はブラウザの標準エラー（[err]）の行に出る
+    reasons = lines[:1] + [line.strip() for line in lines[1:] if "[err]" in line][:1]
+    return f"入っていますが、起動を拒否されたか、起動に失敗しました: {' / '.join(reasons)}"
+
+
 def launch(playwright):
     from playwright.sync_api import Error
 
     try:
         return playwright.chromium.launch(channel="chrome", headless=True)
-    except Error:
-        pass
+    except Error as e:
+        chrome_error = e
     try:
         return playwright.chromium.launch(headless=True)
-    except Error as e:
+    except Error as chromium_error:
         raise BrowserError(
-            "ブラウザを起動できません。Google Chrome を入れるか、`playwright install chromium` を実行してください: "
-            f"{str(e).splitlines()[0]}"
+            "ブラウザを起動できません。\n"
+            f"  Google Chrome: {_launch_failure(chrome_error, 'Google Chrome を入れてください。')}\n"
+            f"  Playwright Chromium: {_launch_failure(chromium_error, '`playwright install chromium` で入れられます（AAC を再生できないことがあるので、Google Chrome を勧めます）。')}"
         ) from None
 
 

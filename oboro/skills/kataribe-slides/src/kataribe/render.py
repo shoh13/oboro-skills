@@ -12,6 +12,11 @@ def _asset(name: str) -> str:
     return (resources.files("kataribe") / "player" / name).read_text(encoding="utf-8")
 
 
+def kit_css() -> str:
+    """scenes.html の図の部品（kt-）。動画の単一HTMLとスライドの図の両方に入れる。"""
+    return _asset("kit.css")
+
+
 def _icon(name: str, extra_class: str = "") -> str:
     """icons/<name>.svg（Lucide）の中身を、ボタンに埋め込めるインラインSVGにする。"""
     source = (resources.files("kataribe") / "player" / "icons" / f"{name}.svg").read_text(encoding="utf-8")
@@ -57,12 +62,15 @@ def render_html(project: Project, timeline: dict, audio_aac: bytes, cast: list[d
     replacements = {
         "{{TITLE}}": html.escape(project.title),
         "{{CSS}}": _asset("player.css"),
+        "{{KIT}}": kit_css(),
         "{{SCENES}}": project.scenes_html,
         "{{ABOUT}}": render_about(project),
         "{{AUDIO}}": base64.b64encode(audio_aac).decode("ascii"),
         "{{TIMELINE}}": timeline_json,
         "{{CAST}}": cast_json,
         "{{CASTJS}}": _asset("cast.js"),
+        "{{FIGURESJS}}": _asset("figures.js"),
+        "{{KEYSJS}}": _asset("keys.js"),
         "{{JS}}": _asset("player.js"),
     }
     page = re.sub(r"\{\{ICON:([a-z-]+)(?::([a-z-]+))?\}\}", lambda m: _icon(m.group(1), m.group(2) or ""), _asset("page.html"))

@@ -10,7 +10,7 @@
 - `out/transcript.md`: 文字起こし。
 - `out/slides.pptx`（`slides`）: 音声なしの PowerPoint のスライド。地の文の解説に、2人が表情を変えながら、バラエティ番組のテロップのような大きな文字でコメントしていく。台本の1行が1枚。
 - `out/extras/`（`build --extras`）: MP4化向けの音声、字幕（VTT）、タイムライン、利用条件。
-- `out/frames/`（`shoot`）: シーンごとのスクリーンショット。
+- `out/frames/`（`shoot`）: シーンごとのスクリーンショット。行ごとに撮る指定（`--at full`・`--at changes`）の画像は `out/frames/full/`・`out/frames/changes/`。
 - `out/mp4/video.mp4`（`mp4`）: 画面と字幕を焼き込んだ MP4。
 - 台本の検査（`lint`）と、再生の検証（`verify`。字幕・シーン・章・行単位の出現・進行変数・立ち絵の表情と口の7項目）。
 
@@ -20,16 +20,18 @@
 | --- | --- |
 | 共通 | [uv](https://docs.astral.sh/uv/)（Python 3.11 以上を使う） |
 | 音声の合成（`build`） | Docker。VOICEVOX のエンジンを Docker で起動する（初回はイメージを取得する） |
-| 立ち絵の素材（`build`） | ずんだもん・四国めたんは、初回だけネットワーク（配布元から取得してキャッシュする）。春日部つむぎ・雨晴はう・あんこもんは、初回だけ素材の zip を `~/Downloads` に置く（下の「立ち絵の素材」） |
-| スクリーンショット・再生検証・MP4（`shoot`・`verify`・`mp4`） | Google Chrome。単一HTMLの音声は AAC なので、AAC を再生できない Playwright の Chromium では止まる |
+| 立ち絵の素材（`build`） | ずんだもん・四国めたんは、初回だけネットワーク（配布元から取得してキャッシュする）。春日部つむぎ・雨晴はう・あんこもんは、初回だけ素材の zip を `~/Documents/kataribe-assets` に置く（下の「立ち絵の素材」）。状態は `kataribe assets` で確かめられる |
+| スクリーンショット・再生検証・配置の検査・MP4（`shoot`・`verify`・`layout`・`mp4`） | Google Chrome。単一HTMLの音声は AAC なので、AAC を再生できない Playwright の Chromium では止まる |
+
+依存パッケージの初回の取得には `pypi.org` と `files.pythonhosted.org` への接続が要ります。`assets` はネットワークも Docker もブラウザも使いません。
 
 `lint` と `slides` は音声を合成しないので、Docker は要りません。`lint` は Chrome も要りません。`slides` は、立ち絵の素材と、`scenes.html` に図があるときだけ Chrome を使います。MP4 の ffmpeg は `imageio-ffmpeg` が付けてくるため、別途入れる必要はありません。
 
 ## セットアップ
 
 ```sh
-git clone <このリポジトリ>
-cd kataribe
+git clone https://github.com/shoh13/oboro-skills.git
+cd oboro-skills/oboro/skills/kataribe
 uv sync
 ```
 
@@ -39,16 +41,15 @@ Chrome がない環境では、Chromium も入れます（ただし、Playwright
 uv run playwright install chromium
 ```
 
-### Claude Code に入れる
-
-このリポジトリは、Claude Code のプラグインとマーケットプレイスを兼ねています（`.claude-plugin/`）。入れると、解説動画の `video` スキル（`/kataribe:video`）と、スライドの `slides` スキル（`/kataribe:slides`）が使えます。
+スキルのディレクトリに書き込めない環境では、仮想環境をその外に置きます。
 
 ```sh
-claude plugin marketplace add oboro-yudachi/kataribe   # 手元のチェックアウトのパスでもよい
-claude plugin install kataribe@kataribe
+UV_PROJECT_ENVIRONMENT="$HOME/.cache/kataribe/venv" uv run --frozen --project <プラグインのルート> kataribe assets
 ```
 
-リポジトリを更新したあとは、`claude plugin marketplace update kataribe` と `claude plugin update kataribe@kataribe` で取り込みます。リポジトリは非公開なので、GitHub から入れるには、そのマシンの git がリポジトリにアクセスできる必要があります。
+### スキルを入れる
+
+インストール方法は [リポジトリの README](../../../README.md) を参照してください。動画は `oboro:kataribe`、スライドは `oboro:kataribe-slides` です。
 
 ## プロジェクトの形
 
@@ -89,25 +90,28 @@ claude plugin install kataribe@kataribe
 </section>
 ```
 
-画像ファイルは `<img src="figures/a.png">` のように、プロジェクトからの相対パスで書けます（`build` と `slides` が埋め込みます）。行単位の出現・消去・強調（`data-at`・`data-out`・`data-focus`）と、進行変数（CSS 変数 `--p`・`--lp`）の詳しい書き方は [`skills/video/SKILL.md`](skills/video/SKILL.md) を見てください。
+画像ファイルは `<img src="figures/a.png">` のように、プロジェクトからの相対パスで書けます（`build` と `slides` が埋め込みます）。行単位の出現・消去・強調（`data-at`・`data-out`・`data-focus`）と、進行変数（CSS 変数 `--p`・`--lp`）の詳しい書き方は [動画スキル](../kataribe/SKILL.md) を見てください。
 
 ## 使い方
 
-以下のコマンドは、どのディレクトリからでも実行できます。`<プラグイン>` はこのリポジトリのルートです。
+以下のコマンドは、どのディレクトリからでも実行できます。`<プラグイン>` は `pyproject.toml` があるスキルのディレクトリです。
 
 ```sh
 uv run --project <プラグイン> kataribe <コマンド> <project>
 ```
 
-`build`・`slides`・`shoot`・`verify`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます（既定は `<project>/out`。下の表の `out/` はこの出力先です）。`build` で `--out` を付けたら、`shoot`・`verify`・`mp4` にも同じ `--out` を付けます。
+`build`・`slides`・`shoot`・`verify`・`layout`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます（既定は `<project>/out`。下の表の `out/` はこの出力先です）。`build` で `--out` を付けたら、`shoot`・`verify`・`layout`・`mp4` にも同じ `--out` を付けます。
 
 | コマンド | 内容 |
 | --- | --- |
-| `build <project>` | 音声を合成して `out/video.html` と `out/transcript.md` を作る。`--extras` を付けると副産物も作る |
+| `build <project>` | 音声を合成して `out/video.html` と `out/transcript.md` を作る。行ごとの音声はキャッシュ（`~/.cache/kataribe/tts`）にあれば合成しない。`--extras` を付けると副産物も作る。`--no-cache` でキャッシュを使わない |
 | `lint <project> [--slides]` | 台本と画面を検査する。音声は合成しない。`--slides` はスライドの台本として検査する |
+| `assets` | 話者ごとの立ち絵素材の状態（`キャッシュ済み`・`zip あり`・`自動取得可`・`素材なし`）を表示する。ネットワークに接続せず、zip の展開もキャッシュへの書き込みもしない |
+| `readings <project>` | 合成に渡す文の読みと、置き換えた `readings.json` の項目と、音声クエリから計算した音声の長さを、行ごとに台本の表示文と並べて表示し、字幕の表示速度の超過（7.5 字/秒）を警告する。VOICEVOX の音声クエリを使い、音声は作らない（Docker が要る）。`scenes.html` はなくてよい。読みが正しいことは保証しない（手順は [動画スキル](../kataribe/SKILL.md) の「読みを確かめる」） |
 | `slides <project>` | 地の文とコメントで進む PowerPoint のスライド `out/slides.pptx` を作る。音声は合成しない |
-| `shoot <project> [--at start\|mid\|end]` | 各シーンのスクリーンショットを `out/frames/` に撮る（先に `build`） |
+| `shoot <project> [--at start\|mid\|end\|full\|changes]` | 各シーンのスクリーンショットを `out/frames/` に撮る（先に `build`）。`full` は要素が消える直前の行と最後の行を、`changes` は見た目が変わる行をすべて撮る |
 | `verify <project>` | `out/video.html` を実時間で再生し、7項目（字幕・シーン・章・行単位の出現・進行変数・立ち絵の表情と口など）を検証する（先に `build`） |
+| `layout <project>` | 各シーンの表示が最も多い行で、図のステージからのはみ出しと、立ち絵との重なりを測る。問題があれば終了コード1（先に `build`） |
 | `mp4 <project> [--size 1280x720\|1920x1080] [--fps 24\|30\|60]` | `out/mp4/video.mp4` を作る（先に `build --extras`） |
 
 典型的な流れ:
@@ -144,17 +148,18 @@ uv run --project <プラグイン> kataribe slides <project>
 open <project>/out/slides.pptx
 ```
 
-詳しい規則は [`skills/slides/SKILL.md`](skills/slides/SKILL.md) を見てください。
+詳しい規則は [スライドスキル](../kataribe-slides/SKILL.md) を見てください。
 
 ## 設定（環境変数）
 
 | 変数 | 内容 |
 | --- | --- |
-| `KATARIBE_TTS_CMD` | TTS アダプターのコマンドを差し替える。テキストを stdin で受け取り、`--voice`、`--speed`、`--output`（WAV）を受け付ける |
+| `KATARIBE_TTS_CMD` | TTS アダプターのコマンドを差し替える。テキストを stdin で受け取り、`--voice`、`--speed`、`--output`（WAV）を受け付ける。この場合、`readings` は読みを取れないので失敗する。アクセントの辞書は使わない |
+| `KATARIBE_TTS_CACHE` | 行ごとの音声のキャッシュの置き場所（既定は `~/.cache/kataribe/tts`）。`off` で無効 |
 | `KATARIBE_VOICEVOX_URL` | Docker を使わず、起動済みの VOICEVOX エンジンの URL（例: `http://127.0.0.1:50021`）を使う |
 | `KATARIBE_FFMPEG` | ffmpeg の実行ファイルを差し替える |
 | `KATARIBE_CHAR_CACHE` | 立ち絵素材のキャッシュの場所を差し替える（既定は `~/.cache/kataribe/characters`） |
-| `KATARIBE_CHAR_SOURCES` | 手元に落とす立ち絵素材の zip を探す場所を差し替える（既定は `~/Downloads`） |
+| `KATARIBE_CHAR_SOURCES` | 立ち絵素材の zip の置き場所を差し替える（既定は `~/Documents/kataribe-assets`） |
 | `KATARIBE_SLIDES_FONT` | スライドのフォントを差し替える（既定は Google スライドで使える `Noto Sans JP`） |
 | `KATARIBE_CHAR_DEFS` | 立ち絵の定義のディレクトリを差し替える（開発・テスト用） |
 
@@ -171,51 +176,47 @@ open <project>/out/slides.pptx
 
 | 話者 | 素材 | 取り方 |
 | --- | --- | --- |
-| ずんだもん・四国めたん | 坂本アヒル氏の立ち絵素材 | `build` が配布元から取得する |
+| ずんだもん・四国めたん | 坂本アヒル氏の立ち絵素材 | `build` が配布元から取得し、置き場所にも保存する |
 | 春日部つむぎ | 春日部つむぎ公式立ち絵素材 v2.0（春日部つくし氏） | [公式サイト](https://tsukushinyoki10.wixsite.com/ktsumugiofficial)から `春日部つむぎ立ち絵_公式_v2.0.zip` を落とす |
 | 雨晴はう | 雨晴はう公式立ち絵 v2.0 | [公式サイト](https://amehau.com/)の案内から `雨晴はう_公式立ち絵_v2.0.zip` を落とす |
 | あんこもん | 坂本アヒル氏のあんこもん立ち絵素材 | [配布元](https://uu.getuploader.com/s_ahiru/download/71)から `あんこもん立ち絵素材.zip` を落とす（パスワードは作者の告知を見る） |
 
-手元に落とす素材は、zip の名前のまま `~/Downloads`（`KATARIBE_CHAR_SOURCES` で変えられる）に置きます。`build` は、MD5 で同じ版かを確かめてから使い、キャッシュに写します。一度キャッシュに入れば、zip は消して構いません。
+手元に落とす素材は、zip の名前のまま `~/Documents/kataribe-assets`（`KATARIBE_CHAR_SOURCES` で変えられる）に置きます。`build` は、MD5 で同じ版かを確かめてから使い、キャッシュに写します。置き場所に MD5 の一致する zip があれば、自動で取得する話者でもネットワークに接続しません。一度キャッシュに入れば、zip は消して構いません。
 
-`build` は素材をリポジトリの外のキャッシュに置きます。素材の再配布は許されていないので、素材と書き出した画像は git にも共有用の zip にも入れません。立ち絵を含む動画の利用は、非商用に限ります（[東北ずん子・ずんだもんプロジェクト キャラクターガイドライン](https://zunko.jp/guideline.html)、春日部つむぎ・雨晴はうは各素材の利用規約）。
+話者ごとの状態（`キャッシュ済み`・`zip あり`・`自動取得可`・`素材なし`）は、次で確かめられます。ネットワークに接続せず、zip の展開もキャッシュへの書き込みもしません。
+
+```sh
+uv run kataribe assets
+```
+
+`build` は素材をリポジトリの外のキャッシュに置きます。素材の再配布は許されていないので、素材と書き出した画像は git にもスキルの配布物にも共有用の zip にも入れません。立ち絵を含む動画の利用は、非商用に限ります（[東北ずん子・ずんだもんプロジェクト キャラクターガイドライン](https://zunko.jp/guideline.html)、春日部つむぎ・雨晴はうは各素材の利用規約）。
 
 ## 開発
 
+動画（`oboro/skills/kataribe`）とスライド（`oboro/skills/kataribe-slides`）は、同じ実行コード（`src/kataribe`、`pyproject.toml`、`uv.lock`）を別々に同梱しています。テストは `oboro/skills/kataribe/tests/` にだけあり、どちらのディレクトリで実行しても、そのディレクトリの `src/kataribe` を検査します。実行コードを直したら、両方のディレクトリを同じにして、両方で実行します。
+
 ```sh
+cd oboro/skills/kataribe        # スライドは oboro/skills/kataribe-slides
 uv run pytest                      # 全部
 uv run pytest -m "not integration" # Docker の VOICEVOX を使うテストを飛ばす
 ```
 
+`tests/test_skill_copies.py` は、2つのディレクトリの実行コードが1バイトでも違うと失敗します。`tests/test_art.py` は、どちらのディレクトリにも立ち絵の素材（`.psd`・`.zip`）や余分な定義が git で追跡されていないことを確かめます。GitHub Actions の `.github/workflows/kataribe.yml` は、どちらかのディレクトリを変える PR と main への push のたびに、両方のディレクトリで `uv run pytest -m "not integration"` を実行します。
+
 `integration` マーカーのテストは、実際の VOICEVOX（Docker）を使います。Docker が使えないときは自動で飛ばされます。立ち絵は、テストではネットワークから取得せず、テスト用の小さな素材（`tests/fake_art.py`）を使います。
 
 - `src/kataribe/`: 本体。`cli.py` がコマンドの入口です。
-- `src/kataribe/adapters/voicevox.py`: 既定の TTS アダプター（VOICEVOX）。
+- `src/kataribe/adapters/voicevox.py`: 既定の TTS アダプター（VOICEVOX）。音声クエリから読みを取る関数もある（`readings` が使う）。
+- `src/kataribe/readcheck.py`: `readings`。合成に渡す文と、置き換えた辞書の項目と、エンジンの読みと、アクセントと、計算した音声の長さを、行ごとに並べ、片仮名語の区切りを警告する。
+- `src/kataribe/ttscache.py`: 行ごとの音声のキャッシュ。
+- `src/kataribe/layout.py`: `layout`。図のはみ出しと立ち絵との重なりの測定（測定はブラウザ、判定は Python の純粋な関数）。
 - `src/kataribe/art.py`: 立ち絵の素材の取得・検証・キャッシュ・レイヤーの書き出し。
 - `src/kataribe/characters/`: 立ち絵の定義（話者ごとの表情とレイヤーの選び方）。
 - `src/kataribe/mouth.py`: 音声の音量から口パクの段階を計算する。
-- `src/kataribe/player/`: 単一HTMLのプレーヤー（HTML・CSS・JS）。`cast.js` は立ち絵の表情・口・まばたきを決める純粋な関数。
+- `src/kataribe/player/`: 単一HTMLのプレーヤー（HTML・CSS・JS）。`cast.js` は立ち絵の表情・口・まばたきを決める純粋な関数。`keys.js` はキー操作の表と判定の純粋な関数。`kit.css` は図の部品（`kt-`）で、プレーヤーとスライドの図に埋め込む。
 - `src/kataribe/slides.py`: スライド（`slides`）の PowerPoint の組み立て（python-pptx）。`diagrams.py` は図を撮る、`images.py` は `scenes.html` の画像を埋め込む。
-- `skills/video/SKILL.md`・`skills/slides/SKILL.md`: このプラグインを使う Claude Code スキル（動画・スライド）の仕様。振る舞いの正本です。
-- `tests/`: テスト。
-
-## ライセンス
-
-`.claude-plugin/plugin.json` のとおり、現在は `UNLICENSED`（ライセンスを定めていません）です。
-
-## Notion への同期
-
-`skills/video/SKILL.md`（kataribe）と `skills/slides/SKILL.md`（kataribe-slides）を、それぞれ実行に要るファイルと一緒に、Notion の `[DB]スキル v2` の同じ名前のページへ同期します。正本は Git で、Notion へは一方向に上書きします。Notion 側では編集しません。
-
-同期には [notion-skill-sync](https://github.com/oboro-yudachi/notion-skill-sync) プラグインを使います。
-
-- `notion-skill.json`: 同期の設定。`skills` に、同期するスキルを1つずつ書く。各スキルには、同期先のページ、Notion でのスキル名（`kataribe`、`kataribe-slides`）、ルートに置く SKILL.md（`skill_md`）、その横に並べるもの（`include`）を書く。`include` は `uv run --project` で動かすのに要るものだけにする（`tests/` は入れない）。ディレクトリは `/` で終える。書き方の詳細は notion-skill-sync の README を見る。
-- 同期の手順: main にマージしたあと、Claude Code で `/notion-skill-sync:sync` を実行する。プラグインは次で入れる。
-
-  ```sh
-  claude plugin marketplace add oboro-yudachi/notion-skill-sync
-  claude plugin install notion-skill-sync@notion-skill-sync
-  ```
+- `../kataribe/SKILL.md`・`../kataribe-slides/SKILL.md`: このプラグインを使う Claude Code スキル（動画・スライド）の仕様。振る舞いの正本です。
+- `../kataribe/tests/`: 両スキルの実行コードを検証するテスト。`tests/compare_speed.py <project>` は、音声クエリから計算した長さと build の実測長を比べ、字幕の表示速度の警告の判定が一致するかを示す（Docker が要る）。
 
 ## 同梱している第三者の素材
 
