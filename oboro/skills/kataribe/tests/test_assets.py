@@ -124,6 +124,13 @@ def test_状態は_キャッシュ_zip_自動取得の優先順で決まる(arch
 # ---------- assets コマンド ----------
 
 
+def speaker_lines(capsys) -> list[str]:
+    """assets の出力のうち、話者ごとの行（最後の行は出力先の既定）。"""
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[-1].startswith("出力先の既定: ")
+    return lines[:-1]
+
+
 def test_assets_は話者ごとに1行を出し_素材なしは手順を示して終了コード0(archive, places, tmp_path, monkeypatch, capsys):
     write_definitions(
         tmp_path,
@@ -134,7 +141,7 @@ def test_assets_は話者ごとに1行を出し_素材なしは手順を示し�
 
     code = main(["assets"])
 
-    out = capsys.readouterr().out.splitlines()
+    out = speaker_lines(capsys)
     assert code == 0
     assert len(out) == 2
     assert out[1] == "四国めたん: 自動取得可"
@@ -159,7 +166,7 @@ def test_assets_はネットワーク接続_zip_の展開_キャッシュへの�
     monkeypatch.setattr(zipfile, "ZipFile", forbidden)
 
     assert main(["assets"]) == 0
-    assert capsys.readouterr().out.splitlines() == ["ずんだもん: zip あり", "四国めたん: zip あり"]
+    assert speaker_lines(capsys) == ["ずんだもん: zip あり", "四国めたん: zip あり"]
     assert not places[0].exists()
     assert [path.name for path in places[1].iterdir()] == [ZIP_NAME]
 
@@ -169,7 +176,7 @@ def test_実際の定義でも5人の状態を出す(places, monkeypatch, capsys
 
     assert main(["assets"]) == 0
 
-    out = capsys.readouterr().out.splitlines()
+    out = speaker_lines(capsys)
     assert [line.split(":")[0] for line in out] == ["あんこもん", "雨晴はう", "四国めたん", "春日部つむぎ", "ずんだもん"]
     assert sum(": 自動取得可" in line for line in out) == 2
     assert sum(": 素材なし" in line for line in out) == 3
@@ -196,7 +203,7 @@ def test_環境変数がなければ_oboro_の設定ファイルの_kataribe_cha
     write_oboro_config(tmp_path, monkeypatch, f'[org]\ndir = "~/org"\n\n[kataribe]\nchar_sources = "{zips}"\n')
 
     assert main(["assets"]) == 0
-    assert capsys.readouterr().out.splitlines() == ["ずんだもん: zip あり"]
+    assert speaker_lines(capsys) == ["ずんだもん: zip あり"]
 
 
 def test_設定ファイルの置き場所の_チルダは_ホームに展開する(tmp_path, monkeypatch):

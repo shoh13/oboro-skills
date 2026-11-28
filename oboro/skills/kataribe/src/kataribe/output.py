@@ -4,6 +4,8 @@ import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
+from kataribe.config import kataribe_path
+
 
 class BuildError(Exception):
     pass
@@ -42,6 +44,20 @@ def _install(stage: Path, out: Path) -> None:
 def out_dir(root: Path, out: Path | None = None) -> Path:
     """出力先。指定がなければ <project>/out。"""
     return root / "out" if out is None else out
+
+
+def configured_out(root: Path) -> Path | None:
+    """oboro の設定ファイルの kataribe.output_dir の下の、プロジェクトのディレクトリ名の出力先。設定がなければ None。"""
+    parent = kataribe_path("output_dir")
+    return None if parent is None else parent / root.resolve().name
+
+
+def default_out_note() -> str:
+    """--out を付けないときの出力先（kataribe assets が出す）。"""
+    parent = kataribe_path("output_dir")
+    if parent is None:
+        return "出力先の既定: <プロジェクト>/out"
+    return f"出力先の既定: {parent}/<プロジェクトのディレクトリ名>（oboro の設定ファイルの kataribe.output_dir）"
 
 
 def build_hint(root: Path, out: Path | None = None, extras: bool = False) -> str:

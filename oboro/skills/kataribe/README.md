@@ -100,13 +100,13 @@ UV_PROJECT_ENVIRONMENT="$HOME/.cache/kataribe/venv" uv run --frozen --project <�
 uv run --project <プラグイン> kataribe <コマンド> <project>
 ```
 
-`build`・`slides`・`shoot`・`verify`・`layout`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます（既定は `<project>/out`。下の表の `out/` はこの出力先です）。`build` で `--out` を付けたら、`shoot`・`verify`・`layout`・`mp4` にも同じ `--out` を付けます。
+`build`・`slides`・`shoot`・`verify`・`layout`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます。付けなければ、oboro の設定ファイル（`~/.config/oboro/config.toml`。setup-oboro が書く）の `kataribe.output_dir` の下の `<プロジェクトのディレクトリ名>`、設定がなければ `<project>/out` です（下の表の `out/` はこの出力先です）。同じ名前のディレクトリのプロジェクトは、設定の下で同じ出力先になります。`build` で `--out` を付けたら、`shoot`・`verify`・`layout`・`mp4` にも同じ `--out` を付けます。
 
 | コマンド | 内容 |
 | --- | --- |
 | `build <project>` | 音声を合成して `out/video.html` と `out/transcript.md` を作る。行ごとの音声はキャッシュ（`~/.cache/kataribe/tts`）にあれば合成しない。`--extras` を付けると副産物も作る。`--no-cache` でキャッシュを使わない |
 | `lint <project> [--slides]` | 台本と画面を検査する。音声は合成しない。`--slides` はスライドの台本として検査する |
-| `assets` | 話者ごとの立ち絵素材の状態（`キャッシュ済み`・`zip あり`・`自動取得可`・`素材なし`）を表示する。ネットワークに接続せず、zip の展開もキャッシュへの書き込みもしない |
+| `assets` | 話者ごとの立ち絵素材の状態（`キャッシュ済み`・`zip あり`・`自動取得可`・`素材なし`）と、`--out` を付けないときの出力先を表示する。ネットワークに接続せず、zip の展開もキャッシュへの書き込みもしない |
 | `readings <project>` | 合成に渡す文の読みと、置き換えた `readings.json` の項目と、音声クエリから計算した音声の長さを、行ごとに台本の表示文と並べて表示し、字幕の表示速度の超過（7.5 字/秒）を警告する。VOICEVOX の音声クエリを使い、音声は作らない（Docker が要る）。`scenes.html` はなくてよい。読みが正しいことは保証しない（手順は [動画スキル](../kataribe/SKILL.md) の「読みを確かめる」） |
 | `slides <project>` | 地の文とコメントで進む PowerPoint のスライド `out/slides.pptx` を作る。音声は合成しない |
 | `shoot <project> [--at start\|mid\|end\|full\|changes]` | 各シーンのスクリーンショットを `out/frames/` に撮る（先に `build`）。`full` は要素が消える直前の行と最後の行を、`changes` は見た目が変わる行をすべて撮る |

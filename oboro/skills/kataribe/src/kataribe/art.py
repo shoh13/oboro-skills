@@ -20,7 +20,6 @@ import re
 import shutil
 import sys
 import tempfile
-import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,6 +27,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from kataribe.config import kataribe_path
 from kataribe.definitions import load_definitions
 from kataribe.project import Project
 
@@ -52,27 +52,7 @@ def sources_root() -> Path:
     configured = os.environ.get("KATARIBE_CHAR_SOURCES")
     if configured:
         return Path(configured)
-    return _oboro_char_sources() or Path.home() / "Documents" / "kataribe-assets"
-
-
-def _oboro_char_sources() -> Path | None:
-    """oboro の設定ファイル（setup-oboro が書く。OBORO_CONFIG があればそのパス）の kataribe.char_sources。"""
-    config = Path(os.environ.get("OBORO_CONFIG") or Path.home() / ".config" / "oboro" / "config.toml").expanduser()
-    try:
-        data = tomllib.loads(config.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return None
-    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as e:
-        raise ArtError(f"oboro の設定ファイルを読めません: {config}（{e}）") from None
-    section = data.get("kataribe", {})
-    if not isinstance(section, dict):
-        raise ArtError(f"oboro の設定ファイルの kataribe は、表（[kataribe]）にしてください: {config}")
-    value = section.get("char_sources")
-    if value is None:
-        return None
-    if not isinstance(value, str) or not value:
-        raise ArtError(f"oboro の設定ファイルの kataribe.char_sources は、空でないパスの文字列にしてください: {config}")
-    return Path(value).expanduser()
+    return kataribe_path("char_sources") or Path.home() / "Documents" / "kataribe-assets"
 
 
 # ---------- 取得・検証 ----------

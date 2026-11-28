@@ -34,7 +34,7 @@ codex plugin add oboro@oboro-skills
 - 場所は `~/.config/oboro/config.toml`（環境変数 `OBORO_CONFIG` があればそのパス）。
 - `/setup-oboro`（Codex では `$setup-oboro`）が端末を調べ、確かめてから書きます。パスと名前だけを書き、秘密の値は書きません。各キーの上には、意味と使うスキルをコメントで書きます。
 - これを読むのは、org-file-conventions（`[org]`）、artifact-destination と adr-recorder（`[destination]`）、kataribe と kataribe-slides（`[kataribe]`）です。
-- 値がないときの動きはスキルごとに違います。org-file-conventions は、決まったパスを読みに行かずに、設定するか尋ねます。artifact-destination と adr-recorder は、指示ファイルやルールのページが示す保存先を先に使い、設定はそれがない端末の既定にだけ使います。どちらもなければ、これまでどおり尋ねます。kataribe は、環境変数 `KATARIBE_CHAR_SOURCES` を設定より先に使い、どちらもなければ既定の `~/Documents/kataribe-assets` を使います。
+- 値がないときの動きはスキルごとに違います。org-file-conventions は、決まったパスを読みに行かずに、設定するか尋ねます。artifact-destination と adr-recorder は、指示ファイルやルールのページが示す保存先を先に使い、設定はそれがない端末の既定にだけ使います。どちらもなければ、これまでどおり尋ねます。kataribe は、立ち絵の素材の置き場に環境変数 `KATARIBE_CHAR_SOURCES` を設定より先に使い、どちらもなければ既定の `~/Documents/kataribe-assets` を使います。出力先は、コマンドの `--out`、設定の `kataribe.output_dir` の下の `<プロジェクトのディレクトリ名>`、既定の `<project>/out` の順に決めます。
 
 ## 変えるとき
 
