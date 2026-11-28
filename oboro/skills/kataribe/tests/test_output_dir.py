@@ -2,12 +2,14 @@
 import os
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 import pytest
 from conftest import FAKE_TTS, SCRIPT, make_project, run_build, run_shoot
 
 from kataribe.cli import main
+from kataribe.output import configured_out
 
 
 def write_oboro_config(tmp_path: Path, monkeypatch, text: str) -> Path:
@@ -135,3 +137,31 @@ def test_設定が読めないか値の形が違えば_設定ファイルを示�
     assert str(config) in result.stderr
     assert "Traceback" not in result.stderr
     assert not (project / "out").exists()
+
+
+def case_insensitive(directory: Path) -> bool:
+    return (directory.parent / directory.name.upper()).exists()
+
+
+def test_綴りの違う2つの表記で同じディレクトリを指すとき_同じ出力先になる(tmp_path, monkeypatch):
+    videos = tmp_path / "videos"
+    write_oboro_config(tmp_path, monkeypatch, f'[kataribe]\noutput_dir = "{videos}"\n')
+    project = make_project(tmp_path / "chromis")
+    nfc = make_project(tmp_path / unicodedata.normalize("NFC", "プロジェクト"))
+    if not case_insensitive(project):
+        pytest.skip("大文字小文字を区別するファイルシステム")
+
+    assert configured_out(tmp_path / "CHROMIS") == configured_out(project)
+    assert configured_out(tmp_path / unicodedata.normalize("NFD", nfc.name)) == configured_out(nfc)
+    assert configured_out(tmp_path / "CHROMIS").name.startswith("chromis-")
+
+
+def test_大文字小文字を区別するなら_綴りの違う別のディレクトリは別の出力先になる(tmp_path, monkeypatch):
+    videos = tmp_path / "videos"
+    write_oboro_config(tmp_path, monkeypatch, f'[kataribe]\noutput_dir = "{videos}"\n')
+    lower = make_project(tmp_path / "chromis")
+    if case_insensitive(lower):
+        pytest.skip("大文字小文字を区別しないファイルシステム")
+    upper = make_project(tmp_path / "CHROMIS")
+
+    assert configured_out(lower) != configured_out(upper)

@@ -1,3 +1,4 @@
+import fcntl
 import hashlib
 import os
 import shutil
@@ -56,8 +57,30 @@ def configured_out(root: Path) -> Path | None:
     parent = kataribe_path("output_dir")
     if parent is None:
         return None
-    project = root.resolve()
+    project = _on_disk(root)
     return parent / f"{project.name}-{hashlib.sha256(str(project).encode()).hexdigest()[:8]}"
+
+
+def _on_disk(root: Path) -> Path:
+    """ファイルシステムが記録している綴りの絶対パス。
+
+    resolve は書かれた綴りを保つので、大文字小文字や Unicode の正規化（NFC・NFD）を区別しない macOS では、
+    同じディレクトリが綴りごとに別の出力先になる。macOS では開いたディレクトリの実際のパスを F_GETPATH で引く。
+    ほかの OS と、開けないときは resolve の結果を使う。
+    """
+    resolved = root.resolve()
+    if not hasattr(fcntl, "F_GETPATH"):
+        return resolved
+    try:
+        fd = os.open(resolved, os.O_RDONLY)
+    except OSError:
+        return resolved
+    try:
+        return Path(os.fsdecode(fcntl.fcntl(fd, fcntl.F_GETPATH, bytes(1024)).rstrip(b"\0")))
+    except OSError:
+        return resolved
+    finally:
+        os.close(fd)
 
 
 def default_out_note() -> str:
