@@ -119,7 +119,7 @@ uv run --project <プラグイン> kataribe <コマンド> <project>
 ```sh
 uv run --project <プラグイン> kataribe lint <project>
 uv run --project <プラグイン> kataribe build <project>
-open <project>/out/video.html
+open <出力先>/video.html  # 出力先は kataribe assets の最後の行（既定は <project>/out）
 ```
 
 MP4 まで作るときは、`build --extras` で副産物を作ってから `mp4` を実行します。
@@ -145,7 +145,7 @@ uv run --project <プラグイン> kataribe mp4 <project>
 ```sh
 uv run --project <プラグイン> kataribe lint <project> --slides
 uv run --project <プラグイン> kataribe slides <project>
-open <project>/out/slides.pptx
+open <出力先>/slides.pptx  # 出力先は kataribe assets の最後の行（既定は <project>/out）
 ```
 
 詳しい規則は [スライドスキル](../kataribe-slides/SKILL.md) を見てください。
