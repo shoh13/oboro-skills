@@ -1,6 +1,6 @@
 ---
 name: setup-oboro
-description: "この端末での oboro の環境設定（org-roam のノートの置き場、capture テンプレートの正本、個人の ADR の置き場、kataribe の立ち絵の素材の置き場など）を調べ、ユーザーに確かめてから、リポジトリの外の設定ファイルに書く。秘密の値は書かない。「oboro の設定をして」「/setup-oboro」で使う。"
+description: "この端末での oboro の環境設定（org-roam のノートの置き場、capture テンプレートの正本、個人の ADR の置き場、kataribe の立ち絵の素材と成果物の置き場など）を調べ、ユーザーに確かめてから、リポジトリの外の設定ファイルに書く。秘密の値は書かない。「oboro の設定をして」「/setup-oboro」で使う。"
 disable-model-invocation: true
 ---
 
@@ -25,6 +25,7 @@ oboro のスキルのうち、端末ごとに違う値を使うものは、こ�
 | `org.shell_init` | org-babel の shell ブロックで `source` するファイル（非対話シェルで PATH を通すため） | org-file-conventions | `["~/.local/share/google-cloud-sdk/path.zsh.inc"]` |
 | `destination.adr_dir` | 個人の ADR（1つの Repo のコードに閉じない設計判断）の置き場。指示ファイルやルールのページが保存先を決めていないときだけ使う | artifact-destination、adr-recorder | `"~/notes/adr"` |
 | `kataribe.char_sources` | 立ち絵の素材の zip の置き場。環境変数 `KATARIBE_CHAR_SOURCES` があれば、そちらを使う | kataribe、kataribe-slides | `"~/Documents/kataribe-assets"` |
+| `kataribe.output_dir` | 成果物（動画、スライドなど）の置き場。この下の `<プロジェクトのディレクトリ名>-<パスから作る8文字>` に出す。コマンドの `--out` があれば、そちらを使う | kataribe、kataribe-slides | `"~/Movies/kataribe"` |
 
 書いたファイルの冒頭は次の形になる。
 
@@ -49,10 +50,12 @@ memo_dir = "~/repo/05_org/roam"
    - `org.shell_init`：`.zshrc` などでだけ PATH を通しているコマンドの初期化ファイル（gcloud の `path.zsh.inc` など）。
    - `destination.adr_dir`：個人の ADR をすでに置いているディレクトリ（Repo の `docs/adr/` ではないもの）をユーザーに尋ね、中の ADR のファイルを根拠にする。ディレクトリは作らない。指示ファイルやそれが参照するルールのページが保存先を決めている端末では、そちらが先に使われ、この値は使われないと添える。
    - `kataribe.char_sources`：立ち絵の素材の zip（kataribe の README の「立ち絵の素材」の名前）を置いているディレクトリ。`printenv KATARIBE_CHAR_SOURCES` に値があれば、それも候補にする。既定の `~/Documents/kataribe-assets` と同じなら書かない。
+   - `kataribe.output_dir`：今ある成果物（`video.html` か `slides.pptx` と、隣の `script.json` の親）の場所を `mdfind -name video.html` と `mdfind -name slides.pptx` で探して根拠にする。成果物がプロジェクトの下の `out/` にあるなら、既定と同じなので書かない（書くと、次から出力先が変わる）。プロジェクトの外の 1 つのディレクトリにそろっているときと、ユーザーが置き場を指定したときだけ候補にする。
    見つからない値は空のままにして、ユーザーに聞く。使わない値は書かない。値のない節（`[destination]` など）は書かない。`org.dir` は `[org]` を書くときに必須で、決まらなければ `[org]` を書かない。ほかの値は欠けてもよい。欠けたときの動き方は、使うスキルが決める。
    - `[org]` の値：org-file-conventions の手順 0 の表。
    - `destination.adr_dir`：artifact-destination が、これまでどおり `references/保存先ポリシー.md` と確認で決める。
    - `kataribe.char_sources`：kataribe が `KATARIBE_CHAR_SOURCES`、なければ既定の `~/Documents/kataribe-assets` を使う。
+   - `kataribe.output_dir`：kataribe が `--out`、なければ既定の `<project>/out` を使う。
 3. すべての値と根拠を表で示し、そのまま書くか、直すかを確かめる。
 4. 確かめた値だけで、ファイル全体を書き直す（何度実行しても同じ結果になる）。冒頭に「setup-oboro が書く。秘密の値は書かない。」とコメントを書き、書くキーの直前にだけ、表から作った説明のコメントを書く（書かないキーの説明は書かない）。コメントも毎回表から作り直すので、手で足したコメントは残らない。表にないキーは足さない。書いたら読み直し、TOML として読めることと、表にないキーがないことを確かめる。コメントは TOML の値にならないので、この確認には影響しない。
 5. 書いたパスと、次のセッションから使われることを伝える。dotfiles で管理するときの置き方も 1 行で示す。

@@ -1,8 +1,11 @@
+import hashlib
 import os
 import shutil
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
+
+from kataribe.config import kataribe_path
 
 
 class BuildError(Exception):
@@ -42,6 +45,53 @@ def _install(stage: Path, out: Path) -> None:
 def out_dir(root: Path, out: Path | None = None) -> Path:
     """出力先。指定がなければ <project>/out。"""
     return root / "out" if out is None else out
+
+
+def configured_out(root: Path) -> Path | None:
+    """oboro の設定ファイルの kataribe.output_dir の下の出力先。設定がなければ None。
+
+    フォルダ名は <プロジェクトのディレクトリ名>-<絶対パスの SHA-256 の先頭8文字>。名前の同じ別のプロジェクト（/a/demo と /b/demo）が、
+    同じフォルダに解決されて互いの成果物を置き換えないようにする。
+    """
+    parent = kataribe_path("output_dir")
+    if parent is None:
+        return None
+    project = _on_disk(root)
+    return parent / f"{project.name}-{hashlib.sha256(str(project).encode()).hexdigest()[:8]}"
+
+
+def _on_disk(root: Path) -> Path:
+    """ファイルシステムが記録している綴りの絶対パス。
+
+    resolve は書かれた綴りを保つので、大文字小文字や Unicode の正規化（NFC・NFD）を区別しない macOS では、
+    同じディレクトリが綴りごとに別の出力先になる。macOS では開いたディレクトリの実際のパスを F_GETPATH で引く。
+    ほかの OS（fcntl のない Windows を含む）と、開けないときは resolve の結果を使う。
+    """
+    resolved = root.resolve()
+    try:
+        import fcntl  # Windows にはないので、ここで読む
+    except ImportError:
+        return resolved
+    if not hasattr(fcntl, "F_GETPATH"):
+        return resolved
+    try:
+        fd = os.open(resolved, os.O_RDONLY)
+    except OSError:
+        return resolved
+    try:
+        return Path(os.fsdecode(fcntl.fcntl(fd, fcntl.F_GETPATH, bytes(1024)).rstrip(b"\0")))
+    except OSError:
+        return resolved
+    finally:
+        os.close(fd)
+
+
+def default_out_note() -> str:
+    """--out を付けないときの出力先（kataribe assets が出す）。"""
+    parent = kataribe_path("output_dir")
+    if parent is None:
+        return "出力先の既定: <プロジェクト>/out"
+    return f"出力先の既定: {parent}/<プロジェクトのディレクトリ名>-<パスから作る8文字>（oboro の設定ファイルの kataribe.output_dir）"
 
 
 def build_hint(root: Path, out: Path | None = None, extras: bool = False) -> str:

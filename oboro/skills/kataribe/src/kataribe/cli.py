@@ -9,11 +9,12 @@ from kataribe.art import ArtError, asset_report, asset_warnings, build_cast, use
 from kataribe.audio import AudioError, concat_wavs, encode_aac
 from kataribe.browser import BrowserError
 from kataribe.check import lint_warnings, speed_warnings
+from kataribe.config import ConfigError
 from kataribe.extras import write_extras
 from kataribe.layout import check_layout
 from kataribe.mouth import mouth_levels
 from kataribe.mp4 import DEFAULT_FPS, DEFAULT_SIZE, FPS_CHOICES, SIZES, make_mp4
-from kataribe.output import BuildError, out_dir, write_output
+from kataribe.output import BuildError, configured_out, default_out_note, out_dir, write_output
 from kataribe.project import ProjectError, accent_words, load_project
 from kataribe.readcheck import ReadingCheckError, check_readings, format_rows, row_speed_warnings, row_split_warnings
 from kataribe.reading import spoken_text
@@ -142,7 +143,7 @@ def run_layout(root: Path, out: Path | None = None) -> int:
 
 
 def assets() -> None:
-    print("\n".join(asset_report()))
+    print("\n".join([*asset_report(), default_out_note()]))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -181,9 +182,15 @@ def main(argv: list[str] | None = None) -> int:
     mp4_parser.add_argument("--size", choices=list(SIZES), default=DEFAULT_SIZE)
     mp4_parser.add_argument("--fps", type=int, choices=FPS_CHOICES, default=DEFAULT_FPS)
     for command_parser in (build_parser, slides_parser, shoot_parser, verify_parser, layout_parser, mp4_parser):
-        command_parser.add_argument("--out", type=Path, help="出力先のディレクトリ（既定は <project>/out）")
+        command_parser.add_argument(
+            "--out", type=Path, help="出力先のディレクトリ（既定は oboro の設定ファイルの kataribe.output_dir/<project の名前>-<パスから作る8文字>、設定がなければ <project>/out）"
+        )
     args = parser.parse_args(argv)
     try:
+        if hasattr(args, "out") and args.out is None:
+            args.out = configured_out(args.project)
+            if args.out is not None:
+                _warn([f"出力先: {args.out}（oboro の設定ファイルの kataribe.output_dir）"])
         if args.command == "assets":
             assets()
         elif args.command == "lint":
@@ -202,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
             shoot(args.project, args.at, out=args.out)
         else:
             build(args.project, extras=args.extras, out=args.out, cache=not args.no_cache)
-    except (ProjectError, ArtError, TtsError, AudioError, BuildError, BrowserError, ReadingCheckError) as e:
+    except (ProjectError, ArtError, ConfigError, TtsError, AudioError, BuildError, BrowserError, ReadingCheckError) as e:
         print(f"エラー: {e}", file=sys.stderr)
         for note in getattr(e, "__notes__", []):
             print(note, file=sys.stderr)
