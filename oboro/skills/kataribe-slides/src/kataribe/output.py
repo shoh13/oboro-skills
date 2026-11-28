@@ -1,4 +1,3 @@
-import fcntl
 import hashlib
 import os
 import shutil
@@ -66,9 +65,13 @@ def _on_disk(root: Path) -> Path:
 
     resolve は書かれた綴りを保つので、大文字小文字や Unicode の正規化（NFC・NFD）を区別しない macOS では、
     同じディレクトリが綴りごとに別の出力先になる。macOS では開いたディレクトリの実際のパスを F_GETPATH で引く。
-    ほかの OS と、開けないときは resolve の結果を使う。
+    ほかの OS（fcntl のない Windows を含む）と、開けないときは resolve の結果を使う。
     """
     resolved = root.resolve()
+    try:
+        import fcntl  # Windows にはないので、ここで読む
+    except ImportError:
+        return resolved
     if not hasattr(fcntl, "F_GETPATH"):
         return resolved
     try:

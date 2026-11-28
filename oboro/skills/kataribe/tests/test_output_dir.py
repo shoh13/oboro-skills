@@ -165,3 +165,21 @@ def test_大文字小文字を区別するなら_綴りの違う別のディレ�
     upper = make_project(tmp_path / "CHROMIS")
 
     assert configured_out(lower) != configured_out(upper)
+
+
+def test_fcntl_を読めない_OS_でも_output_を読み込めて_出力先を決められる(tmp_path, monkeypatch):
+    videos = tmp_path / "videos"
+    write_oboro_config(tmp_path, monkeypatch, f'[kataribe]\noutput_dir = "{videos}"\n')
+    project = make_project(tmp_path / "project")
+    code = (
+        "import sys; sys.modules['fcntl'] = None  # import fcntl を ImportError にする（Windows と同じ）\n"
+        "from pathlib import Path\n"
+        "from kataribe.output import configured_out\n"
+        f"print(configured_out(Path({str(project)!r})))\n"
+    )
+
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=dict(os.environ))
+
+    assert result.returncode == 0, result.stderr
+    out = Path(result.stdout.strip())
+    assert out.parent == videos and out.name.startswith("project-")
