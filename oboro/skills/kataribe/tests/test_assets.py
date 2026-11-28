@@ -206,6 +206,18 @@ def test_設定ファイルの置き場所の_チルダは_ホームに展開す
     assert art.sources_root() == Path.home() / "kataribe-zips"
 
 
+def test_OBORO_CONFIG_のチルダも_ホームに展開して_その設定ファイルを読む(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("KATARIBE_CHAR_SOURCES", raising=False)
+    config = home / "custom" / "config.toml"
+    config.parent.mkdir(parents=True)
+    config.write_text('[kataribe]\nchar_sources = "~/zips"\n', encoding="utf-8")
+    monkeypatch.setenv("OBORO_CONFIG", "~/custom/config.toml")
+
+    assert art.sources_root() == home / "zips"
+
+
 def test_環境変数_KATARIBE_CHAR_SOURCES_は_設定ファイルより優先する(places, tmp_path, monkeypatch):
     write_oboro_config(tmp_path, monkeypatch, f'[kataribe]\nchar_sources = "{tmp_path / "from-config"}"\n')
 

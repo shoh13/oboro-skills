@@ -57,7 +57,7 @@ def sources_root() -> Path:
 
 def _oboro_char_sources() -> Path | None:
     """oboro の設定ファイル（setup-oboro が書く。OBORO_CONFIG があればそのパス）の kataribe.char_sources。"""
-    config = Path(os.environ.get("OBORO_CONFIG") or Path.home() / ".config" / "oboro" / "config.toml")
+    config = Path(os.environ.get("OBORO_CONFIG") or Path.home() / ".config" / "oboro" / "config.toml").expanduser()
     try:
         data = tomllib.loads(config.read_text(encoding="utf-8"))
     except FileNotFoundError:
