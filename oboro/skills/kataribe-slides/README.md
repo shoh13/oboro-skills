@@ -159,7 +159,7 @@ open <project>/out/slides.pptx
 | `KATARIBE_VOICEVOX_URL` | Docker を使わず、起動済みの VOICEVOX エンジンの URL（例: `http://127.0.0.1:50021`）を使う |
 | `KATARIBE_FFMPEG` | ffmpeg の実行ファイルを差し替える |
 | `KATARIBE_CHAR_CACHE` | 立ち絵素材のキャッシュの場所を差し替える（既定は `~/.cache/kataribe/characters`） |
-| `KATARIBE_CHAR_SOURCES` | 立ち絵素材の zip の置き場所を差し替える（既定は `~/Documents/kataribe-assets`） |
+| `KATARIBE_CHAR_SOURCES` | 立ち絵素材の zip の置き場所を差し替える。oboro の設定ファイル（`~/.config/oboro/config.toml`。setup-oboro が書く）の `kataribe.char_sources` より優先する。どちらもなければ `~/Documents/kataribe-assets` |
 | `KATARIBE_SLIDES_FONT` | スライドのフォントを差し替える（既定は Google スライドで使える `Noto Sans JP`） |
 | `KATARIBE_CHAR_DEFS` | 立ち絵の定義のディレクトリを差し替える（開発・テスト用） |
 
@@ -181,7 +181,7 @@ open <project>/out/slides.pptx
 | 雨晴はう | 雨晴はう公式立ち絵 v2.0 | [公式サイト](https://amehau.com/)の案内から `雨晴はう_公式立ち絵_v2.0.zip` を落とす |
 | あんこもん | 坂本アヒル氏のあんこもん立ち絵素材 | [配布元](https://uu.getuploader.com/s_ahiru/download/71)から `あんこもん立ち絵素材.zip` を落とす（パスワードは作者の告知を見る） |
 
-手元に落とす素材は、zip の名前のまま `~/Documents/kataribe-assets`（`KATARIBE_CHAR_SOURCES` で変えられる）に置きます。`build` は、MD5 で同じ版かを確かめてから使い、キャッシュに写します。置き場所に MD5 の一致する zip があれば、自動で取得する話者でもネットワークに接続しません。一度キャッシュに入れば、zip は消して構いません。
+手元に落とす素材は、zip の名前のまま `~/Documents/kataribe-assets`（`KATARIBE_CHAR_SOURCES` か、oboro の設定ファイルの `kataribe.char_sources` で変えられる）に置きます。`build` は、MD5 で同じ版かを確かめてから使い、キャッシュに写します。置き場所に MD5 の一致する zip があれば、自動で取得する話者でもネットワークに接続しません。一度キャッシュに入れば、zip は消して構いません。
 
 話者ごとの状態（`キャッシュ済み`・`zip あり`・`自動取得可`・`素材なし`）は、次で確かめられます。ネットワークに接続せず、zip の展開もキャッシュへの書き込みもしません。
 

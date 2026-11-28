@@ -97,6 +97,12 @@ def isolated_tts_cache(tmp_path, monkeypatch):
     monkeypatch.setenv("KATARIBE_TTS_CACHE", str(tmp_path / "tts-cache"))
 
 
+@pytest.fixture(autouse=True)
+def isolated_oboro_config(tmp_path, monkeypatch):
+    # 端末の oboro の設定ファイル（~/.config/oboro/config.toml）の [kataribe] を読まない
+    monkeypatch.setenv("OBORO_CONFIG", str(tmp_path / "no-oboro-config.toml"))
+
+
 @pytest.fixture
 def project(tmp_path: Path) -> Path:
     return make_project(tmp_path / "project")
