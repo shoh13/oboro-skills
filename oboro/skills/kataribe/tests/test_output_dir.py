@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import FAKE_TTS, make_project, run_build, run_shoot
+from conftest import FAKE_TTS, SCRIPT, make_project, run_build, run_shoot
 
 from kataribe.cli import main
 
@@ -20,6 +20,14 @@ def write_oboro_config(tmp_path: Path, monkeypatch, text: str) -> Path:
 
 def outputs(directory: Path) -> list[str]:
     return sorted(path.name for path in directory.iterdir())
+
+
+def only_output(parent: Path, name: str) -> Path:
+    """parent の下にある、ただ1つの出力先（<name>-<パスから作る8文字>）。"""
+    found = list(parent.iterdir())
+    assert len(found) == 1, found
+    assert found[0].name.startswith(f"{name}-") and len(found[0].name) == len(name) + 9, found[0].name
+    return found[0]
 
 
 def test_設定がなければ_出力先は_プロジェクトの_out(project, capsys):
@@ -37,12 +45,28 @@ def test_設定の_kataribe_output_dir_があれば_その下のプロジェク�
     result = run_build(project)
 
     assert result.returncode == 0, result.stderr
-    assert outputs(videos / "project") == ["transcript.md", "video.html"]
-    assert outputs(videos) == ["project"]  # 一時ディレクトリが残らない
+    out = only_output(videos, "project")  # 一時ディレクトリも残らない
+    assert outputs(out) == ["transcript.md", "video.html"]
+    assert f"出力先: {out}（oboro の設定ファイルの kataribe.output_dir）" in result.stderr
     assert not (project / "out").exists()
     assert main(["assets"]) == 0
     note = capsys.readouterr().out.splitlines()[-1]
-    assert note == f"出力先の既定: {videos}/<プロジェクトのディレクトリ名>（oboro の設定ファイルの kataribe.output_dir）"
+    assert note == f"出力先の既定: {videos}/<プロジェクトのディレクトリ名>-<パスから作る8文字>（oboro の設定ファイルの kataribe.output_dir）"
+
+
+def test_名前の同じ別のプロジェクトは_別の出力先になり_互いの成果物を上書きしない(tmp_path, monkeypatch):
+    videos = tmp_path / "videos"
+    write_oboro_config(tmp_path, monkeypatch, f'[kataribe]\noutput_dir = "{videos}"\n')
+    first = make_project(tmp_path / "a" / "demo")
+    second = make_project(tmp_path / "b" / "demo", script={**SCRIPT, "title": "二つ目の動画"})
+
+    assert run_build(first).returncode == 0
+    assert run_build(second).returncode == 0
+
+    built = sorted(videos.iterdir())
+    assert len(built) == 2 and all(path.name.startswith("demo-") for path in built)
+    titles = sorted(next(line for line in (path / "transcript.md").read_text(encoding="utf-8").splitlines() if line) for path in built)
+    assert titles == ["# テスト動画", "# 二つ目の動画"]
 
 
 def test_build_のあとの_shoot_も_設定の出力先を読む(project, tmp_path, monkeypatch):
@@ -53,7 +77,7 @@ def test_build_のあとの_shoot_も_設定の出力先を読む(project, tmp_p
     result = run_shoot(project)
 
     assert result.returncode == 0, result.stderr
-    assert outputs(videos / "project" / "frames") == ["s1-end.png", "s2-end.png", "s3-end.png"]
+    assert outputs(only_output(videos, "project") / "frames") == ["s1-end.png", "s2-end.png", "s3-end.png"]
 
 
 def test_設定の出力先と_OBORO_CONFIG_のチルダは_ホームに展開する(project, tmp_path, monkeypatch):
@@ -67,7 +91,7 @@ def test_設定の出力先と_OBORO_CONFIG_のチルダは_ホームに展開�
     result = run_build(project)
 
     assert result.returncode == 0, result.stderr
-    assert outputs(home / "videos" / "project") == ["transcript.md", "video.html"]
+    assert outputs(only_output(home / "videos", "project")) == ["transcript.md", "video.html"]
 
 
 def test_引数の_out_は_設定より優先する(project, tmp_path, monkeypatch):
@@ -81,15 +105,19 @@ def test_引数の_out_は_設定より優先する(project, tmp_path, monkeypat
     assert not (tmp_path / "videos").exists()
 
 
-def test_プロジェクトを_ドット_で渡しても_プロジェクトのディレクトリ名を使う(project, tmp_path, monkeypatch):
+def test_プロジェクトを_ドット_で渡しても_絶対パスと同じ出力先になる(project, tmp_path, monkeypatch):
     videos = tmp_path / "videos"
     write_oboro_config(tmp_path, monkeypatch, f'[kataribe]\noutput_dir = "{videos}"\n')
     env = dict(os.environ, KATARIBE_TTS_CMD=f"{sys.executable} {FAKE_TTS}")
+    assert run_build(project).returncode == 0
+    out = only_output(videos, "project")
+    (out / "video.html").unlink()
 
     result = subprocess.run([sys.executable, "-m", "kataribe", "build", "."], cwd=project, capture_output=True, text=True, env=env)
 
     assert result.returncode == 0, result.stderr
-    assert outputs(videos) == ["project"]
+    assert only_output(videos, "project") == out
+    assert (out / "video.html").is_file()
 
 
 @pytest.mark.parametrize(

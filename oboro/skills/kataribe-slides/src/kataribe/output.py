@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shutil
 import tempfile
@@ -47,9 +48,16 @@ def out_dir(root: Path, out: Path | None = None) -> Path:
 
 
 def configured_out(root: Path) -> Path | None:
-    """oboro の設定ファイルの kataribe.output_dir の下の、プロジェクトのディレクトリ名の出力先。設定がなければ None。"""
+    """oboro の設定ファイルの kataribe.output_dir の下の出力先。設定がなければ None。
+
+    フォルダ名は <プロジェクトのディレクトリ名>-<絶対パスの SHA-256 の先頭8文字>。名前の同じ別のプロジェクト（/a/demo と /b/demo）が、
+    同じフォルダに解決されて互いの成果物を置き換えないようにする。
+    """
     parent = kataribe_path("output_dir")
-    return None if parent is None else parent / root.resolve().name
+    if parent is None:
+        return None
+    project = root.resolve()
+    return parent / f"{project.name}-{hashlib.sha256(str(project).encode()).hexdigest()[:8]}"
 
 
 def default_out_note() -> str:
@@ -57,7 +65,7 @@ def default_out_note() -> str:
     parent = kataribe_path("output_dir")
     if parent is None:
         return "出力先の既定: <プロジェクト>/out"
-    return f"出力先の既定: {parent}/<プロジェクトのディレクトリ名>（oboro の設定ファイルの kataribe.output_dir）"
+    return f"出力先の既定: {parent}/<プロジェクトのディレクトリ名>-<パスから作る8文字>（oboro の設定ファイルの kataribe.output_dir）"
 
 
 def build_hint(root: Path, out: Path | None = None, extras: bool = False) -> str:

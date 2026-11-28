@@ -100,7 +100,7 @@ UV_PROJECT_ENVIRONMENT="$HOME/.cache/kataribe/venv" uv run --frozen --project <�
 uv run --project <プラグイン> kataribe <コマンド> <project>
 ```
 
-`build`・`slides`・`shoot`・`verify`・`layout`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます。付けなければ、oboro の設定ファイル（`~/.config/oboro/config.toml`。setup-oboro が書く）の `kataribe.output_dir` の下の `<プロジェクトのディレクトリ名>`、設定がなければ `<project>/out` です（下の表の `out/` はこの出力先です）。同じ名前のディレクトリのプロジェクトは、設定の下で同じ出力先になります。`build` で `--out` を付けたら、`shoot`・`verify`・`layout`・`mp4` にも同じ `--out` を付けます。
+`build`・`slides`・`shoot`・`verify`・`layout`・`mp4` は、`--out <ディレクトリ>` で出力先を変えられます。付けなければ、oboro の設定ファイル（`~/.config/oboro/config.toml`。setup-oboro が書く）の `kataribe.output_dir` の下の `<プロジェクトのディレクトリ名>-<パスから作る8文字>`、設定がなければ `<project>/out` です（下の表の `out/` はこの出力先です）。8 文字はプロジェクトの絶対パスから作るので、名前の同じ別のプロジェクトは別の出力先になります。設定から決めたときは、標準エラーに `出力先: …` を出します。`build` で `--out` を付けたら、`shoot`・`verify`・`layout`・`mp4` にも同じ `--out` を付けます。
 
 | コマンド | 内容 |
 | --- | --- |

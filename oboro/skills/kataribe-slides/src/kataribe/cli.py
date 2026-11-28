@@ -183,12 +183,14 @@ def main(argv: list[str] | None = None) -> int:
     mp4_parser.add_argument("--fps", type=int, choices=FPS_CHOICES, default=DEFAULT_FPS)
     for command_parser in (build_parser, slides_parser, shoot_parser, verify_parser, layout_parser, mp4_parser):
         command_parser.add_argument(
-            "--out", type=Path, help="出力先のディレクトリ（既定は oboro の設定ファイルの kataribe.output_dir/<project の名前>、設定がなければ <project>/out）"
+            "--out", type=Path, help="出力先のディレクトリ（既定は oboro の設定ファイルの kataribe.output_dir/<project の名前>-<パスから作る8文字>、設定がなければ <project>/out）"
         )
     args = parser.parse_args(argv)
     try:
         if hasattr(args, "out") and args.out is None:
             args.out = configured_out(args.project)
+            if args.out is not None:
+                _warn([f"出力先: {args.out}（oboro の設定ファイルの kataribe.output_dir）"])
         if args.command == "assets":
             assets()
         elif args.command == "lint":

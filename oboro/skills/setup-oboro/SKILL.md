@@ -25,7 +25,7 @@ oboro のスキルのうち、端末ごとに違う値を使うものは、こ�
 | `org.shell_init` | org-babel の shell ブロックで `source` するファイル（非対話シェルで PATH を通すため） | org-file-conventions | `["~/.local/share/google-cloud-sdk/path.zsh.inc"]` |
 | `destination.adr_dir` | 個人の ADR（1つの Repo のコードに閉じない設計判断）の置き場。指示ファイルやルールのページが保存先を決めていないときだけ使う | artifact-destination、adr-recorder | `"~/notes/adr"` |
 | `kataribe.char_sources` | 立ち絵の素材の zip の置き場。環境変数 `KATARIBE_CHAR_SOURCES` があれば、そちらを使う | kataribe、kataribe-slides | `"~/Documents/kataribe-assets"` |
-| `kataribe.output_dir` | 成果物（動画、スライドなど）の置き場。この下のプロジェクトのディレクトリ名のディレクトリに出す。コマンドの `--out` があれば、そちらを使う | kataribe、kataribe-slides | `"~/Movies/kataribe"` |
+| `kataribe.output_dir` | 成果物（動画、スライドなど）の置き場。この下の `<プロジェクトのディレクトリ名>-<パスから作る8文字>` に出す。コマンドの `--out` があれば、そちらを使う | kataribe、kataribe-slides | `"~/Movies/kataribe"` |
 
 書いたファイルの冒頭は次の形になる。
 
