@@ -33,7 +33,8 @@ codex plugin add oboro@oboro-skills
 
 - 場所は `~/.config/oboro/config.toml`（環境変数 `OBORO_CONFIG` があればそのパス）。
 - `/setup-oboro`（Codex では `$setup-oboro`）が端末を調べ、確かめてから書きます。パスと名前だけを書き、秘密の値は書きません。各キーの上には、意味と使うスキルをコメントで書きます。
-- 今これを読むのは org-file-conventions だけです。設定がなければ、決まったパスを読みに行かずに、設定するか尋ねます。
+- これを読むのは、org-file-conventions（`[org]`）、artifact-destination と adr-recorder（`[destination]`）、kataribe と kataribe-slides（`[kataribe]`）です。
+- 値がないときの動きはスキルごとに違います。org-file-conventions は、決まったパスを読みに行かずに、設定するか尋ねます。artifact-destination と adr-recorder は、指示ファイルやルールのページが示す保存先を先に使い、設定はそれがない端末の既定にだけ使います。どちらもなければ、これまでどおり尋ねます。kataribe は、環境変数 `KATARIBE_CHAR_SOURCES` を設定より先に使い、どちらもなければ既定の `~/Documents/kataribe-assets` を使います。
 
 ## 変えるとき
 

@@ -175,6 +175,81 @@ def test_実際の定義でも5人の状態を出す(places, monkeypatch, capsys
     assert sum(": 素材なし" in line for line in out) == 3
 
 
+# ---------- 置き場所の決め方（環境変数、oboro の設定ファイル、既定の順） ----------
+
+
+def write_oboro_config(tmp_path: Path, monkeypatch, text: str) -> Path:
+    config = tmp_path / "oboro" / "config.toml"
+    config.parent.mkdir(parents=True)
+    config.write_text(text, encoding="utf-8")
+    monkeypatch.setenv("OBORO_CONFIG", str(config))
+    return config
+
+
+def test_環境変数がなければ_oboro_の設定ファイルの_kataribe_char_sources_の_zip_を使う(archive, tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("KATARIBE_CHAR_CACHE", str(tmp_path / "cache"))
+    monkeypatch.delenv("KATARIBE_CHAR_SOURCES", raising=False)
+    write_definitions(tmp_path, monkeypatch, definition(archive))
+    zips = tmp_path / "zips"
+    zips.mkdir()
+    shutil.copyfile(archive, zips / ZIP_NAME)
+    write_oboro_config(tmp_path, monkeypatch, f'[org]\ndir = "~/org"\n\n[kataribe]\nchar_sources = "{zips}"\n')
+
+    assert main(["assets"]) == 0
+    assert capsys.readouterr().out.splitlines() == ["ずんだもん: zip あり"]
+
+
+def test_設定ファイルの置き場所の_チルダは_ホームに展開する(tmp_path, monkeypatch):
+    monkeypatch.delenv("KATARIBE_CHAR_SOURCES", raising=False)
+    write_oboro_config(tmp_path, monkeypatch, '[kataribe]\nchar_sources = "~/kataribe-zips"\n')
+
+    assert art.sources_root() == Path.home() / "kataribe-zips"
+
+
+def test_OBORO_CONFIG_のチルダも_ホームに展開して_その設定ファイルを読む(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("KATARIBE_CHAR_SOURCES", raising=False)
+    config = home / "custom" / "config.toml"
+    config.parent.mkdir(parents=True)
+    config.write_text('[kataribe]\nchar_sources = "~/zips"\n', encoding="utf-8")
+    monkeypatch.setenv("OBORO_CONFIG", "~/custom/config.toml")
+
+    assert art.sources_root() == home / "zips"
+
+
+def test_環境変数_KATARIBE_CHAR_SOURCES_は_設定ファイルより優先する(places, tmp_path, monkeypatch):
+    write_oboro_config(tmp_path, monkeypatch, f'[kataribe]\nchar_sources = "{tmp_path / "from-config"}"\n')
+
+    assert art.sources_root() == places[1]
+
+
+@pytest.mark.parametrize("text", [None, '[org]\ndir = "~/org"\n'], ids=["設定ファイルなし", "kataribe_の表なし"])
+def test_設定ファイルに_kataribe_char_sources_がなければ_既定の置き場所(text, tmp_path, monkeypatch):
+    monkeypatch.delenv("KATARIBE_CHAR_SOURCES", raising=False)
+    if text is not None:
+        write_oboro_config(tmp_path, monkeypatch, text)
+
+    assert art.sources_root() == Path.home() / "Documents" / "kataribe-assets"
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["[kataribe\n", "[kataribe]\nchar_sources = 1\n", '[kataribe]\nchar_sources = ""\n', 'kataribe = "zips"\n'],
+    ids=["TOML_でない", "文字列でない", "空", "表でない"],
+)
+def test_設定ファイルが読めないか値の形が違えば_設定ファイルを示して失敗する(text, archive, tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("KATARIBE_CHAR_CACHE", str(tmp_path / "cache"))
+    monkeypatch.delenv("KATARIBE_CHAR_SOURCES", raising=False)
+    write_definitions(tmp_path, monkeypatch, definition(archive))
+    config = write_oboro_config(tmp_path, monkeypatch, text)
+
+    assert main(["assets"]) == 1
+    err = capsys.readouterr().err
+    assert str(config) in err
+    assert "Traceback" not in err
+
+
 # ---------- 置き場所の zip の使い方 ----------
 
 

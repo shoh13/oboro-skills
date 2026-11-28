@@ -20,6 +20,7 @@ import re
 import shutil
 import sys
 import tempfile
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -44,9 +45,34 @@ def cache_root() -> Path:
 
 
 def sources_root() -> Path:
-    """素材の zip の置き場所。使う人が落とした zip をここで探し、自動で取得した zip もここに残す。"""
+    """素材の zip の置き場所。使う人が落とした zip をここで探し、自動で取得した zip もここに残す。
+
+    環境変数 KATARIBE_CHAR_SOURCES、oboro の設定ファイルの kataribe.char_sources、既定の ~/Documents/kataribe-assets の順に決める。
+    """
     configured = os.environ.get("KATARIBE_CHAR_SOURCES")
-    return Path(configured) if configured else Path.home() / "Documents" / "kataribe-assets"
+    if configured:
+        return Path(configured)
+    return _oboro_char_sources() or Path.home() / "Documents" / "kataribe-assets"
+
+
+def _oboro_char_sources() -> Path | None:
+    """oboro の設定ファイル（setup-oboro が書く。OBORO_CONFIG があればそのパス）の kataribe.char_sources。"""
+    config = Path(os.environ.get("OBORO_CONFIG") or Path.home() / ".config" / "oboro" / "config.toml").expanduser()
+    try:
+        data = tomllib.loads(config.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as e:
+        raise ArtError(f"oboro の設定ファイルを読めません: {config}（{e}）") from None
+    section = data.get("kataribe", {})
+    if not isinstance(section, dict):
+        raise ArtError(f"oboro の設定ファイルの kataribe は、表（[kataribe]）にしてください: {config}")
+    value = section.get("char_sources")
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value:
+        raise ArtError(f"oboro の設定ファイルの kataribe.char_sources は、空でないパスの文字列にしてください: {config}")
+    return Path(value).expanduser()
 
 
 # ---------- 取得・検証 ----------
@@ -90,7 +116,7 @@ def _download(source: dict, dest: Path) -> None:
         # 配布元がログインやパスワードを求めるので、使う人が落とした zip を使う（MD5 は呼び出し元で確かめる）
         local = sources_root() / source["file"]
         if not local.is_file():
-            raise ArtError(f"立ち絵素材を自動では取得できません。{_how_to_get(source)}（置き場所は KATARIBE_CHAR_SOURCES で変えられます）")
+            raise ArtError(f"立ち絵素材を自動では取得できません。{_how_to_get(source)}（置き場所は KATARIBE_CHAR_SOURCES か、oboro の設定ファイルの kataribe.char_sources で変えられます）")
         try:
             shutil.copyfile(local, dest)
         except OSError as e:
