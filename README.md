@@ -34,3 +34,7 @@ codex plugin add oboro@oboro-skills
 - 場所は `~/.config/oboro/config.toml`（環境変数 `OBORO_CONFIG` があればそのパス）。
 - `/setup-oboro`（Codex では `$setup-oboro`）が端末を調べ、確かめてから書きます。パスと名前だけを書き、秘密の値は書きません。
 - 今これを読むのは org-file-conventions だけです。設定がなければ、決まったパスを読みに行かずに、設定するか尋ねます。
+
+## 変えるとき
+
+`oboro/` を変えたら、`oboro/.claude-plugin/plugin.json` と `oboro/.codex-plugin/plugin.json` の `version` を同じ値に上げます。上げないと、入れてある写しが更新されません（CI の plugin-version が確かめます）。
